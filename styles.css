@@ -72,13 +72,16 @@ h1 {
 }
 
 #synth-view {
-  grid-template-columns: repeat(7, 60px);
+  width: 80%;
+  grid-template-columns: repeat(7, 10vw);
+  gap: 0;
 }
 
 .synth-key {
-  width: 60px;
-  height: 150px;
-  background: #555;
+  width: 10vw;
+  height: 30vw;
+  color: black;
+  background: #fff;
   border-radius: 5px;
   display: flex;
   align-items: center;
