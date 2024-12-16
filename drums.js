@@ -5,7 +5,7 @@ export function initDrums(container) {
     kick: new Audio('assets/drums/808-Kicks01.wav'),
     snare: new Audio('assets/drums/808-Snare01.wav'),
     hihat: new Audio('assets/drums/808-HiHats01.wav'),
-    clap: new Audio('assets/drums/808-Clap01.wav'),
+    clap: new Audio('assets/drums/808-Clap02.wav'),
   };
 
   const pads = ['kick', 'snare', 'hihat', 'clap'];
