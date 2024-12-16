@@ -104,4 +104,3 @@ export class Looper {
       this.noteRecords.push({ startStep, endStep, playOnFn, playOffFn });
     }
   }
-  
