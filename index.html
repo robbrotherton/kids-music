@@ -21,8 +21,6 @@
     <button id="loop-toggle-btn">start loop</button>
     <span id="status">not looping</span>
   </div>
-
-  <!-- simple numeric beat indicator -->
   <div id="beat-indicator">beat: -</div>
 
   <script type="module">
@@ -30,7 +28,7 @@
     import { initSynth } from './synth.js';
     import { Looper } from './looper.js';
     import { setLooperRef } from './globalState.js';
-  
+
     const drumViewBtn = document.getElementById('drum-view-btn');
     const synthViewBtn = document.getElementById('synth-view-btn');
     const drumView = document.getElementById('drum-view');
@@ -38,15 +36,16 @@
     const loopToggleBtn = document.getElementById('loop-toggle-btn');
     const statusSpan = document.getElementById('status');
     const beatIndicator = document.getElementById('beat-indicator');
-  
+
+    // init
     initDrums(drumView);
     initSynth(synthView);
-  
-    // create looper, store reference globally
+
+    // looper
     const looper = new Looper(beatIndicator, 4);
     setLooperRef(looper);
-  
-    // view toggling code
+
+    // toggle container views
     drumViewBtn.addEventListener('click', () => {
       drumView.classList.add('active');
       synthView.classList.remove('active');
@@ -55,8 +54,8 @@
       synthView.classList.add('active');
       drumView.classList.remove('active');
     });
-  
-    // handle loop start/stop
+
+    // start/stop loop
     loopToggleBtn.addEventListener('click', () => {
       if (!looper.isLooping) {
         looper.start();
@@ -66,10 +65,9 @@
         looper.stop();
         statusSpan.textContent = 'not looping';
         loopToggleBtn.textContent = 'start loop';
-        looper.clearAllEvents(); // optional, clear memory
+        looper.clearAllEvents(); // optional
       }
     });
   </script>
-  
 </body>
 </html>
