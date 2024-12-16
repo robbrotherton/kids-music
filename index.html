@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>modular drum+synth looper</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>modular jam</h1>
+
+  <div class="view-toggle">
+    <button id="drum-view-btn">drum pads</button>
+    <button id="synth-view-btn">synth</button>
+  </div>
+
+  <div id="drum-view" class="container active"></div>
+  <div id="synth-view" class="container"></div>
+
+  <div class="looper-controls">
+    <button id="loop-toggle-btn">start loop</button>
+    <span id="status">not looping</span>
+  </div>
+
+  <!-- simple numeric beat indicator -->
+  <div id="beat-indicator">beat: -</div>
+
+  <script type="module">
+    import { initDrums } from './drums.js';
+    import { initSynth } from './synth.js';
+    import { Looper } from './looper.js';
+    import { setLooperRef } from './globalState.js';
+  
+    const drumViewBtn = document.getElementById('drum-view-btn');
+    const synthViewBtn = document.getElementById('synth-view-btn');
+    const drumView = document.getElementById('drum-view');
+    const synthView = document.getElementById('synth-view');
+    const loopToggleBtn = document.getElementById('loop-toggle-btn');
+    const statusSpan = document.getElementById('status');
+    const beatIndicator = document.getElementById('beat-indicator');
+  
+    initDrums(drumView);
+    initSynth(synthView);
+  
+    // create looper, store reference globally
+    const looper = new Looper(beatIndicator, 4);
+    setLooperRef(looper);
+  
+    // view toggling code
+    drumViewBtn.addEventListener('click', () => {
+      drumView.classList.add('active');
+      synthView.classList.remove('active');
+    });
+    synthViewBtn.addEventListener('click', () => {
+      synthView.classList.add('active');
+      drumView.classList.remove('active');
+    });
+  
+    // handle loop start/stop
+    loopToggleBtn.addEventListener('click', () => {
+      if (!looper.isLooping) {
+        looper.start();
+        statusSpan.textContent = 'looping...';
+        loopToggleBtn.textContent = 'stop loop';
+      } else {
+        looper.stop();
+        statusSpan.textContent = 'not looping';
+        loopToggleBtn.textContent = 'start loop';
+        looper.clearAllEvents(); // optional, clear memory
+      }
+    });
+  </script>
+  
+</body>
+</html>

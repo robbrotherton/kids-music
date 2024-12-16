@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drum Pad + Keyboard</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: #222;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .view-toggle {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .view-toggle button {
+      margin: 0 10px;
+      padding: 10px 20px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .view-toggle button.active {
+      background: #ff5722;
+    }
+    .container {
+      display: none;
+    }
+    .container.active {
+      display: grid;
+      gap: 10px;
+    }
+    .keyboard-container {
+      grid-template-columns: repeat(7, 60px);
+    }
+    .key {
+      width: 60px;
+      height: 150px;
+      background: #555;
+      border: 2px solid #333;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+    }
+    .key.active {
+      background: #ff5722;
+    }
+    .settings {
+      margin-top: 20px;
+    }
+    select {
+      padding: 5px 10px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="view-toggle">
+    <button id="keyboard-btn" class="active">Keyboard</button>
+  </div>
+  <div class="container keyboard-container active" id="keyboard-view">
+    <div class="key" data-note="C">C</div>
+    <div class="key" data-note="D">D</div>
+    <div class="key" data-note="E">E</div>
+    <div class="key" data-note="F">F</div>
+    <div class="key" data-note="G">G</div>
+    <div class="key" data-note="A">A</div>
+    <div class="key" data-note="B">B</div>
+  </div>
+  <div class="settings">
+    <label for="key-select">Key:</label>
+    <select id="key-select">
+      <option value="C">C</option>
+      <option value="D">D</option>
+      <option value="E">E</option>
+      <option value="F">F</option>
+      <option value="G">G</option>
+      <option value="A">A</option>
+      <option value="B">B</option>
+    </select>
+    <label>
+      <input type="checkbox" id="chord-mode" checked /> Play Chords
+    </label>
+  </div>
+  <script>
+    const keys = document.querySelectorAll('.key');
+    const keySelect = document.getElementById('key-select');
+    const chordMode = document.getElementById('chord-mode');
+    const notes = {
+    C: new Audio('https://cdn.freesound.org/previews/426/426898_5121236-lq.mp3'),
+    D: new Audio('https://cdn.freesound.org/previews/426/426899_5121236-lq.mp3'),
+    E: new Audio('https://cdn.freesound.org/previews/426/426900_5121236-lq.mp3'),
+    F: new Audio('https://cdn.freesound.org/previews/426/426901_5121236-lq.mp3'),
+    G: new Audio('https://cdn.freesound.org/previews/426/426902_5121236-lq.mp3'),
+    A: new Audio('https://cdn.freesound.org/previews/426/426903_5121236-lq.mp3'),
+    B: new Audio('https://cdn.freesound.org/previews/426/426904_5121236-lq.mp3'),
+  };
+
+    const majorScale = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+    const keyChords = {
+      C: ['C', 'Dm', 'Em', 'F', 'G', 'Am', 'Bdim'],
+      D: ['D', 'Em', 'F#m', 'G', 'A', 'Bm', 'C#dim'],
+      E: ['E', 'F#m', 'G#m', 'A', 'B', 'C#m', 'D#dim'],
+      F: ['F', 'Gm', 'Am', 'Bb', 'C', 'Dm', 'Edim'],
+      G: ['G', 'Am', 'Bm', 'C', 'D', 'Em', 'F#dim'],
+      A: ['A', 'Bm', 'C#m', 'D', 'E', 'F#m', 'G#dim'],
+      B: ['B', 'C#m', 'D#m', 'E', 'F#', 'G#m', 'A#dim'],
+    };
+
+    let currentKey = 'C';
+
+    keySelect.addEventListener('change', (e) => {
+      currentKey = e.target.value;
+    });
+
+    keys.forEach(key => {
+      key.addEventListener('pointerdown', () => {
+        const noteIndex = majorScale.indexOf(key.dataset.note);
+        if (noteIndex === -1) return;
+
+        if (chordMode.checked) {
+          const chord = keyChords[currentKey][noteIndex];
+          playChord(chord);
+        } else {
+          playNote(key.dataset.note);
+        }
+
+        key.classList.add('active');
+        setTimeout(() => key.classList.remove('active'), 200);
+      });
+    });
+
+    function playNote(note) {
+      if (notes[note]) {
+        notes[note].currentTime = 0;
+        notes[note].play();
+      }
+    }
+
+    function playChord(chord) {
+      const root = chord[0];
+      const quality = chord.slice(1);
+
+      // play root note
+      playNote(root);
+
+      // play additional notes based on chord quality
+      if (quality === 'm') {
+        playNote(getNoteFromKey(root, 3)); // minor third
+      } else {
+        playNote(getNoteFromKey(root, 4)); // major third
+      }
+
+      playNote(getNoteFromKey(root, 7)); // fifth
+    }
+
+    function getNoteFromKey(root, interval) {
+      const scale = [...majorScale, ...majorScale]; // loop scale
+      const rootIndex = scale.indexOf(root);
+      return scale[rootIndex + interval];
+    }
+  </script>
+</body>
+</html>
