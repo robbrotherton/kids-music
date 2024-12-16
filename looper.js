@@ -41,9 +41,18 @@ export class Looper {
       clearTimeout(this.loopTimer);
       this.scheduledTimeouts.forEach(handle => clearTimeout(handle));
       this.scheduledTimeouts = [];
-  
-      if (this.synthRef?.stopAllOscillators) {
-        this.synthRef.stopAllOscillators();
+      this.updateStepHighlight(-1);  // Clear step indicator
+
+      // Make sure to release all notes and reset synth state
+      if (this.synthRef) {
+        // First trigger release for any actively playing notes
+        this.noteRecords.forEach(record => {
+          record.playOffFn && record.playOffFn();
+        });
+        // Then ensure all oscillators are stopped if the method exists
+        if (typeof this.synthRef.stopAllOscillators === 'function') {
+          this.synthRef.stopAllOscillators();
+        }
       }
     }
   

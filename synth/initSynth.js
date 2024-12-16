@@ -12,6 +12,7 @@ export async function initSynth(container, looperRef) {
   createSynthUI(container, engine, looperRef);
   if (looperRef) {
     engine.setLooperRef(looperRef);
+    looperRef.synthRef = engine;  // Add this line to ensure bidirectional reference
   }
 
   // Initialize Tone.js context on user interaction
