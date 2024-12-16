@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>quantized 16-step jam</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="utf-8">
+  <title>16-step with BPM</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>16-step indicator</h1>
+  <h1>16-step looper w/ bpm</h1>
 
   <div class="view-toggle">
     <button id="drum-view-btn">drums</button>
@@ -20,9 +19,11 @@
   <div class="looper-controls">
     <button id="loop-toggle-btn">start loop</button>
     <span id="status">not looping</span>
+
+    <label for="bpm-input"> bpm: </label>
+    <input type="number" id="bpm-input" value="120" min="40" max="300" style="width:60px;">
   </div>
 
-  <!-- 16-step indicator -->
   <div class="step-indicator" id="step-indicator"></div>
 
   <script type="module">
@@ -38,15 +39,19 @@
     const loopToggleBtn = document.getElementById('loop-toggle-btn');
     const statusSpan = document.getElementById('status');
     const stepIndicatorContainer = document.getElementById('step-indicator');
+    const bpmInput = document.getElementById('bpm-input');
 
     initDrums(drumView);
     const synth = initSynth(synthView);
 
-    // create the looper, pass the container for steps so we can highlight current step
-    const looper = new Looper(stepIndicatorContainer, 4, 500, synth);
+    let bpm = parseInt(bpmInput.value, 10);
+    const beatsPerMeasure = 4; // 4/4 time
+    let beatDuration = 60000 / bpm; // ms per beat
+
+    let looper = new Looper(stepIndicatorContainer, beatsPerMeasure, beatDuration, synth);
     setLooperRef(looper);
 
-    // toggle views
+    // switching between drum and synth views
     drumViewBtn.addEventListener('click', () => {
       drumView.classList.add('active');
       synthView.classList.remove('active');
@@ -56,7 +61,7 @@
       drumView.classList.remove('active');
     });
 
-    // start/stop loop
+    // loop start/stop
     loopToggleBtn.addEventListener('click', () => {
       if (!looper.isLooping) {
         looper.start();
@@ -69,6 +74,30 @@
         looper.clearAllEvents();
       }
     });
+
+    // dynamically update BPM
+bpmInput.addEventListener('change', (e) => {
+  bpm = parseInt(e.target.value, 10);
+  beatDuration = 60000 / bpm;
+
+  // if loop is running, stop it
+  const wasLooping = looper.isLooping;
+  looper.stop();
+
+  // remove the old step indicator elements
+  stepIndicatorContainer.innerHTML = '';
+
+  // create a fresh looper w/new beatDuration
+  looper = new Looper(stepIndicatorContainer, beatsPerMeasure, beatDuration, synth);
+  setLooperRef(looper);
+
+  if (wasLooping) {
+    looper.start();
+    statusSpan.textContent = 'looping...';
+    loopToggleBtn.textContent = 'stop loop';
+  }
+});
+
   </script>
 </body>
 </html>

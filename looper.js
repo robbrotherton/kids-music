@@ -1,11 +1,12 @@
 export class Looper {
     constructor(stepIndicatorContainer, beats = 4, beatDuration = 500, synthRef = null) {
-      this.beats = beats;          // typically 4
-      this.subStepsPerBeat = 4;    // for 16 steps total
-      this.stepsPerMeasure = this.beats * this.subStepsPerBeat; // 16
-      this.beatDuration = beatDuration;
-      this.stepDuration = beatDuration / this.subStepsPerBeat; // e.g. 125ms
-      this.measureDuration = this.beats * this.beatDuration;   // 2000ms
+      this.beats = beats;         
+      this.subStepsPerBeat = 4;    // 16 steps total
+      this.stepsPerMeasure = this.beats * this.subStepsPerBeat; 
+      this.beatDuration = beatDuration; // ms per beat, from BPM
+      this.stepDuration = this.beatDuration / this.subStepsPerBeat;
+      this.measureDuration = this.beats * this.beatDuration;
+      this.currentMeasureStartTime = null;
   
       this.synthRef = synthRef;
       this.isLooping = false;
@@ -14,9 +15,9 @@ export class Looper {
       this.scheduledTimeouts = [];
   
       this.noteRecords = [];
-  
-      // build 16 dots in the stepIndicatorContainer
       this.stepDots = [];
+  
+      // build the 16-step indicator
       for (let i = 0; i < this.stepsPerMeasure; i++) {
         const dotEl = document.createElement('div');
         dotEl.classList.add('dot');
@@ -26,7 +27,6 @@ export class Looper {
         this.stepDots.push(dotEl);
         stepIndicatorContainer.appendChild(dotEl);
       }
-      // highlight none initially
       this.updateStepHighlight(-1);
     }
   
@@ -50,7 +50,8 @@ export class Looper {
     scheduleNextLoop() {
       if (!this.isLooping) return;
   
-      // schedule note on/off for each record
+      this.currentMeasureStartTime = performance.now();
+      // schedule note on/off
       this.noteRecords.forEach(record => {
         const onDelay = record.startStep * this.stepDuration;
         const offDelay = record.endStep * this.stepDuration;
@@ -68,7 +69,7 @@ export class Looper {
         this.scheduledTimeouts.push(offHandle);
       });
   
-      // highlight step dots over the measure
+      // highlight step dots 
       let currentStep = 0;
       const stepInterval = setInterval(() => {
         if (!this.isLooping) {
@@ -88,11 +89,7 @@ export class Looper {
   
     updateStepHighlight(currentStep) {
       this.stepDots.forEach((dot, index) => {
-        if (index === currentStep) {
-          dot.classList.add('current');
-        } else {
-          dot.classList.remove('current');
-        }
+        dot.classList.toggle('current', index === currentStep);
       });
     }
   
@@ -101,15 +98,9 @@ export class Looper {
     }
   
     addNoteRecord(startStep, endStep, playOnFn, playOffFn) {
-      // clamp or wrap as needed
-      if (startStep >= this.stepsPerMeasure) {
-        startStep = this.stepsPerMeasure - 1;
-      }
-      if (endStep >= this.stepsPerMeasure) {
-        endStep = this.stepsPerMeasure - 1;
-      }
+      if (startStep >= this.stepsPerMeasure) startStep = this.stepsPerMeasure - 1;
+      if (endStep >= this.stepsPerMeasure) endStep = this.stepsPerMeasure - 1;
       if (endStep < startStep) endStep = startStep;
-  
       this.noteRecords.push({ startStep, endStep, playOnFn, playOffFn });
     }
   }
