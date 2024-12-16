@@ -106,9 +106,10 @@ export function createSynthUI(container, synthEngine, looperRef) {
   chordToggleLabel.textContent = ' chord mode ';
   const chordToggle = document.createElement('input');
   chordToggle.type = 'checkbox';
-  chordToggle.checked = true;
+  chordToggle.checked = synthEngine.chordMode; // initialize based on synthEngine state
   chordToggle.addEventListener('change', () => {
     synthEngine.chordMode = chordToggle.checked;
+    console.log('Chord mode toggled:', synthEngine.chordMode); // Debugging log
   });
   chordToggleLabel.appendChild(chordToggle);
   container.appendChild(chordToggleLabel);

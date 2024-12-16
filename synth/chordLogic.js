@@ -14,6 +14,5 @@ export function buildChordIndices(rootIndex, chordMode='triad') {
       return triads[rootIndex];
     }
     // could add more chord modes: seventh chords, etc.
-    return triads[rootIndex];
+    return [rootIndex]; // Return single note index
   }
-  
