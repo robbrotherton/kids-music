@@ -179,16 +179,6 @@ export function initSynth(container) {
   return synth; // <--- return the created synth
 }
 
-// utility to get fractional beat
-function getFractionalBeat() {
-  // 4 beats * 500ms each => 2000ms per measure
-  // how far into the measure are we?
-  const now = performance.now();
-  const msThisMeasure = now % 2000; 
-  const fracBeat = msThisMeasure / 500; 
-  return fracBeat;
-}
-
 // utility to replicate chord logic
 function chordIndicesToOscIDs(rootIndex, chordMode, wave, volume, synth) {
   const triads = [
