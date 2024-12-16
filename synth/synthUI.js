@@ -1,5 +1,5 @@
 import { buildChordIndices } from './chordLogic.js';
-import { getQuantizedStep } from '../utils.js'; // or wherever you store your quantize func
+import { getQuantizedStep } from '../utils.js';
 import { createFilterControls } from './filterControls.js';
 
 /**
@@ -110,26 +110,6 @@ export function createSynthUI(container, synthEngine, looperRef) {
   chordToggleLabel.appendChild(chordToggle);
   container.appendChild(chordToggleLabel);
 
-  /*** FILTER CONTROLS (GLOBAL!) ***/
-  const filterLabel = document.createElement('label');
-  filterLabel.textContent = ' cutoff freq ';
-  const cutoffSlider = document.createElement('input');
-  cutoffSlider.type = 'range';
-  cutoffSlider.min = 0;
-  cutoffSlider.max = 100;
-  cutoffSlider.value = 100; // default wide open
-  cutoffSlider.step = 1;
-  cutoffSlider.addEventListener('input', e => {
-    const linearValue = parseFloat(e.target.value);
-    const minFreq = 20;
-    const maxFreq = 20000;
-    const logValue = minFreq * Math.pow(maxFreq / minFreq, linearValue / 100);
-    const volume = 1 - (linearValue / 100); // Invert volume in conjunction with cutoff
-    synthEngine.setCutoffAndVolume(logValue, volume);
-  });
-  filterLabel.appendChild(cutoffSlider);
-  container.appendChild(filterLabel);
-
   // create and append filter controls
-  // createFilterControls(container, synthEngine);
+  createFilterControls(container, synthEngine);
 }

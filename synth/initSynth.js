@@ -7,8 +7,8 @@ import { createSynthUI } from './synthUI.js';
  * 2) calls createSynthUI to build the dom controls
  * 3) returns the synthEngine for the rest of your app
  */
-export function initSynth(container, looperRef) {
-  const engine = new SynthEngine();
+export async function initSynth(container, looperRef) {
+  const engine = await new SynthEngine().initialize();
   createSynthUI(container, engine, looperRef);
   if (looperRef) {
     engine.setLooperRef(looperRef);
