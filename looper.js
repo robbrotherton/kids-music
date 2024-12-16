@@ -103,4 +103,10 @@ export class Looper {
       if (endStep < startStep) endStep = startStep;
       this.noteRecords.push({ startStep, endStep, playOnFn, playOffFn });
     }
+
+    setBeatDuration(newBeatDuration) {
+      this.beatDuration = newBeatDuration;
+      this.stepDuration = this.beatDuration / this.subStepsPerBeat;
+      this.measureDuration = this.beats * this.beatDuration;
+    }
   }

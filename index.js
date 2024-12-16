@@ -67,16 +67,8 @@ bpmInput.addEventListener('change', (e) => {
   const wasLooping = looper.isLooping;
   looper.stop();
 
-  // remove old step indicator dots
-  stepIndicatorContainer.innerHTML = '';
-
-  // create new looper w/ new BPM
-  looper = new Looper(stepIndicatorContainer, beatsPerMeasure, beatDuration, synth);
-  setLooperRef(looper);
-
-  if (synth.setLooperRef) {
-    synth.setLooperRef(looper);
-  }
+  // update beat duration in the existing looper
+  looper.setBeatDuration(beatDuration);
 
   if (wasLooping) {
     looper.start();
