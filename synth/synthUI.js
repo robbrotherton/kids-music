@@ -91,6 +91,10 @@ export function createSynthUI(container, synthEngine, looperRef) {
     input.type = 'radio';
     input.name = 'waveform';
     input.value = w;
+    if (w === 'sine') {
+      input.checked = true; // set sine wave as default
+      synthEngine.setWaveform(w); // ensure synthEngine is set to sine wave
+    }
     input.addEventListener('change', e => synthEngine.setWaveform(e.target.value));
 
     const icon = document.createElement('img');
