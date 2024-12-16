@@ -81,15 +81,28 @@ export function createSynthUI(container, synthEngine, looperRef) {
   });
 
   // waveform select
-  const waveSelect = document.createElement('select');
-  ['sine', 'square', 'sawtooth', 'triangle'].forEach(w => {
-    const opt = document.createElement('option');
-    opt.value = w;
-    opt.textContent = w;
-    waveSelect.appendChild(opt);
+  const waveforms = ['sine', 'square', 'sawtooth', 'triangle'];
+  const waveSelectContainer = document.createElement('div');
+  waveforms.forEach(w => {
+    const label = document.createElement('label');
+    label.classList.add('waveform-label');
+
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'waveform';
+    input.value = w;
+    input.addEventListener('change', e => synthEngine.setWaveform(e.target.value));
+
+    const icon = document.createElement('img');
+    icon.src = `./assets/icons/${w}-wave.svg`;
+    icon.alt = w;
+    icon.classList.add('waveform-icon');
+
+    label.appendChild(input);
+    label.appendChild(icon);
+    waveSelectContainer.appendChild(label);
   });
-  waveSelect.addEventListener('change', e => synthEngine.setWaveform(e.target.value));
-  container.appendChild(waveSelect);
+  container.appendChild(waveSelectContainer);
 
   // volume slider
   const volSlider = document.createElement('input');
