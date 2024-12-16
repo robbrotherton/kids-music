@@ -104,3 +104,34 @@ body {
     border: 2px solid white; /* highlight current step */
   }
   
+  .waveform-icon {
+    filter: invert();
+  }
+
+  .waveform-label {
+    display: flex;
+    align-items: center;
+    margin: 5px;
+  }
+  
+  .waveform-label input {
+    margin-right: 10px;
+  }
+  
+  .waveform-icon {
+    width: 24px;
+    height: 24px;
+    filter: invert();
+  }
+
+  .waveform-label input[type="radio"] {
+    display: none;
+  }
+
+  .waveform-label input[type="radio"] + .waveform-icon {
+    border: none;
+  }
+
+  .waveform-label input[type="radio"]:checked + .waveform-icon {
+    border: 2px solid rgb(78, 78, 78);
+  }
