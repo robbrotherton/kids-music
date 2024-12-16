@@ -1,5 +1,6 @@
 import { buildChordIndices } from './chordLogic.js';
 import { getQuantizedStep } from '../utils.js'; // or wherever you store your quantize func
+import { createFilterControls } from './filterControls.js';
 
 /**
  * synthUI: builds DOM elements (keys, wave/volume controls),
@@ -38,7 +39,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
       // if looper is active, record the "start step"
       if (looperRef?.isLooping) {
         // this quantizes your press to nearest step
-        startStep = getQuantizedStep(4, 4, looperRef.beatDuration); 
+        startStep = getQuantizedStep(4, 4, looperRef.beatDuration);
       }
     });
 
@@ -76,6 +77,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
     });
 
     container.appendChild(keyEl);
+
   });
 
   // waveform select
@@ -92,9 +94,9 @@ export function createSynthUI(container, synthEngine, looperRef) {
   // volume slider
   const volSlider = document.createElement('input');
   volSlider.type = 'range';
-  volSlider.min = 0; 
-  volSlider.max = 1; 
-  volSlider.step = 0.1; 
+  volSlider.min = 0;
+  volSlider.max = 1;
+  volSlider.step = 0.1;
   volSlider.value = 0.5;
   volSlider.addEventListener('input', e => synthEngine.setVolume(parseFloat(e.target.value)));
   container.appendChild(volSlider);
@@ -110,4 +112,27 @@ export function createSynthUI(container, synthEngine, looperRef) {
   });
   chordToggleLabel.appendChild(chordToggle);
   container.appendChild(chordToggleLabel);
+
+  /*** FILTER CONTROLS (GLOBAL!) ***/
+  const filterLabel = document.createElement('label');
+  filterLabel.textContent = ' cutoff freq ';
+  const cutoffSlider = document.createElement('input');
+  cutoffSlider.type = 'range';
+  cutoffSlider.min = 0;
+  cutoffSlider.max = 100;
+  cutoffSlider.value = 100; // default wide open
+  cutoffSlider.step = 1;
+  cutoffSlider.addEventListener('input', e => {
+    const linearValue = parseFloat(e.target.value);
+    const minFreq = 20;
+    const maxFreq = 20000;
+    const logValue = minFreq * Math.pow(maxFreq / minFreq, linearValue / 100);
+    const volume = 1 - (linearValue / 100); // Invert volume in conjunction with cutoff
+    synthEngine.setCutoffAndVolume(logValue, volume);
+  });
+  filterLabel.appendChild(cutoffSlider);
+  container.appendChild(filterLabel);
+
+  // create and append filter controls
+  // createFilterControls(container, synthEngine);
 }

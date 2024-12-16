@@ -13,6 +13,18 @@ export class SynthEngine {
 
     this.activeOscillators = {}; // { oscId: { osc, gain } }
     this.looperRef = null;
+
+
+    // create a biquad lowpass filter
+    this.filterNode = this.audioCtx.createBiquadFilter();
+    this.filterNode.type = 'lowpass';
+    this.filterNode.frequency.setValueAtTime(20000, this.audioCtx.currentTime); // default cutoff
+
+    // we’ll connect the filter to the destination 
+    // each oscillator's gain node will connect into this filter 
+    // so the signal chain is: oscillator -> gain -> filterNode -> audioCtx.destination
+    this.filterNode.connect(this.audioCtx.destination);
+
   }
 
   setWaveform(wave) {
@@ -21,6 +33,18 @@ export class SynthEngine {
 
   setVolume(vol) {
     this.volume = vol;
+  }
+
+
+  setCutoffFrequency(freq) {
+    // clamp freq if needed
+    freq = Math.max(20, Math.min(freq, 20000));
+    this.filterNode.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+  }
+
+  setCutoffAndVolume(freq, vol) {
+    this.setCutoffFrequency(freq);
+    this.setVolume(vol);
   }
 
   setLooperRef(looperRef) {
@@ -42,7 +66,7 @@ export class SynthEngine {
     gain.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
 
     osc.connect(gain);
-    gain.connect(this.audioCtx.destination);
+    gain.connect(this.filterNode); // connect to filterNode instead of audioCtx.destination
 
     osc.start();
 
