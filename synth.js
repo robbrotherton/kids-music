@@ -1,4 +1,5 @@
 import { looperRef } from './globalState.js';
+import { getQuantizedStep } from './utils.js';
 
 let oscIdCounter = 0;
 
@@ -208,16 +209,3 @@ function chordIndicesToOscIDs(rootIndex, chordMode, wave, volume, synth) {
   const chordIndices = triads[rootIndex];
   return chordIndices.map(idx => synth.noteOn(noteData[idx].freq));
 }
-
-
-function getQuantizedStep(beats, subStepsPerBeat) {
-    const measureDuration = beats * 500; // 4 * 500 = 2000ms
-    const stepDuration = measureDuration / (beats * subStepsPerBeat); // 125ms
-    const now = performance.now();
-    const msInCurrentMeasure = now % measureDuration;
-    const stepFloat = msInCurrentMeasure / stepDuration; 
-    // snap to nearest step
-    const step = Math.round(stepFloat);
-    // clamp to 0..(beats*subStepsPerBeat - 1)
-    return Math.min(step, beats * subStepsPerBeat - 1);
-  }

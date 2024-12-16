@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>modular drum+synth looper</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>quantized 16-step jam</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <h1>modular jam</h1>
+  <h1>16-step indicator</h1>
 
   <div class="view-toggle">
-    <button id="drum-view-btn">drum pads</button>
+    <button id="drum-view-btn">drums</button>
     <button id="synth-view-btn">synth</button>
   </div>
 
@@ -22,31 +22,31 @@
     <span id="status">not looping</span>
   </div>
 
-  <div id="beat-indicator">beat: -</div>
+  <!-- 16-step indicator -->
+  <div class="step-indicator" id="step-indicator"></div>
 
   <script type="module">
     import { initDrums } from './drums.js';
     import { initSynth } from './synth.js';
     import { Looper } from './looper.js';
     import { setLooperRef } from './globalState.js';
-  
+
     const drumViewBtn = document.getElementById('drum-view-btn');
     const synthViewBtn = document.getElementById('synth-view-btn');
     const drumView = document.getElementById('drum-view');
     const synthView = document.getElementById('synth-view');
     const loopToggleBtn = document.getElementById('loop-toggle-btn');
     const statusSpan = document.getElementById('status');
-    const beatIndicator = document.getElementById('beat-indicator');
-  
-    // init stuff
+    const stepIndicatorContainer = document.getElementById('step-indicator');
+
     initDrums(drumView);
-    const synth = initSynth(synthView); // store the instance
-  
-    // create the looper and pass synth in so we can stop everything on .stop()
-    const looper = new Looper(beatIndicator, 4, 500, synth);
+    const synth = initSynth(synthView);
+
+    // create the looper, pass the container for steps so we can highlight current step
+    const looper = new Looper(stepIndicatorContainer, 4, 500, synth);
     setLooperRef(looper);
-  
-    // toggle container views
+
+    // toggle views
     drumViewBtn.addEventListener('click', () => {
       drumView.classList.add('active');
       synthView.classList.remove('active');
@@ -55,7 +55,7 @@
       synthView.classList.add('active');
       drumView.classList.remove('active');
     });
-  
+
     // start/stop loop
     loopToggleBtn.addEventListener('click', () => {
       if (!looper.isLooping) {
@@ -70,6 +70,5 @@
       }
     });
   </script>
-  
 </body>
 </html>

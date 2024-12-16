@@ -1,21 +1,33 @@
 export class Looper {
-    constructor(beatIndicator, beats = 4, beatDuration = 500, synthRef = null) {
-      this.beatIndicator = beatIndicator;
-      this.beats = beats;          // 4
-      this.subStepsPerBeat = 4;    // for 16th-note resolution
-      this.stepsPerMeasure = this.beats * this.subStepsPerBeat; // 16 steps total
-      this.beatDuration = beatDuration; // ms for a single beat
-      this.stepDuration = beatDuration / this.subStepsPerBeat;  // ms per step
-      this.measureDuration = this.beats * this.beatDuration;  // total ms per measure
+    constructor(stepIndicatorContainer, beats = 4, beatDuration = 500, synthRef = null) {
+      this.beats = beats;          // typically 4
+      this.subStepsPerBeat = 4;    // for 16 steps total
+      this.stepsPerMeasure = this.beats * this.subStepsPerBeat; // 16
+      this.beatDuration = beatDuration;
+      this.stepDuration = beatDuration / this.subStepsPerBeat; // e.g. 125ms
+      this.measureDuration = this.beats * this.beatDuration;   // 2000ms
   
       this.synthRef = synthRef;
-  
       this.isLooping = false;
+  
       this.loopTimer = null;
       this.scheduledTimeouts = [];
   
-      // each record: { startStep, endStep, playOnFn, playOffFn }
       this.noteRecords = [];
+  
+      // build 16 dots in the stepIndicatorContainer
+      this.stepDots = [];
+      for (let i = 0; i < this.stepsPerMeasure; i++) {
+        const dotEl = document.createElement('div');
+        dotEl.classList.add('dot');
+        if (i % 4 === 0) {
+          dotEl.classList.add('main-beat');
+        }
+        this.stepDots.push(dotEl);
+        stepIndicatorContainer.appendChild(dotEl);
+      }
+      // highlight none initially
+      this.updateStepHighlight(-1);
     }
   
     start() {
@@ -38,7 +50,7 @@ export class Looper {
     scheduleNextLoop() {
       if (!this.isLooping) return;
   
-      // schedule note-on/off for each record
+      // schedule note on/off for each record
       this.noteRecords.forEach(record => {
         const onDelay = record.startStep * this.stepDuration;
         const offDelay = record.endStep * this.stepDuration;
@@ -56,23 +68,32 @@ export class Looper {
         this.scheduledTimeouts.push(offHandle);
       });
   
-      // beat indicator (just updates every beat, not step)
-      let beatCounter = 0;
-      const beatInterval = setInterval(() => {
+      // highlight step dots over the measure
+      let currentStep = 0;
+      const stepInterval = setInterval(() => {
         if (!this.isLooping) {
-          clearInterval(beatInterval);
+          clearInterval(stepInterval);
           return;
         }
-        beatCounter = (beatCounter + 1) % this.beats;
-        this.beatIndicator.textContent = `beat: ${beatCounter + 1}/${this.beats}`;
-      }, this.beatDuration);
+        this.updateStepHighlight(currentStep);
+        currentStep = (currentStep + 1) % this.stepsPerMeasure;
+      }, this.stepDuration);
   
-      // loop timer
       this.loopTimer = setTimeout(() => {
-        clearInterval(beatInterval);
+        clearInterval(stepInterval);
         this.scheduledTimeouts = [];
         this.scheduleNextLoop(); 
       }, this.measureDuration);
+    }
+  
+    updateStepHighlight(currentStep) {
+      this.stepDots.forEach((dot, index) => {
+        if (index === currentStep) {
+          dot.classList.add('current');
+        } else {
+          dot.classList.remove('current');
+        }
+      });
     }
   
     clearAllEvents() {
@@ -80,14 +101,13 @@ export class Looper {
     }
   
     addNoteRecord(startStep, endStep, playOnFn, playOffFn) {
-      // clamp to [0..stepsPerMeasure]
-      if (startStep < 0) startStep = 0;
-      if (endStep < 0) endStep = 0;
-      if (startStep >= this.stepsPerMeasure) startStep = this.stepsPerMeasure - 1;
-      if (endStep >= this.stepsPerMeasure) endStep = this.stepsPerMeasure - 1;
-  
-      // if endStep < startStep, you can decide to interpret that differently, 
-      // or treat them as a short one-step event
+      // clamp or wrap as needed
+      if (startStep >= this.stepsPerMeasure) {
+        startStep = this.stepsPerMeasure - 1;
+      }
+      if (endStep >= this.stepsPerMeasure) {
+        endStep = this.stepsPerMeasure - 1;
+      }
       if (endStep < startStep) endStep = startStep;
   
       this.noteRecords.push({ startStep, endStep, playOnFn, playOffFn });
