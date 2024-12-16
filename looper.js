@@ -1,18 +1,20 @@
 export class Looper {
     constructor(beatIndicator, beats = 4, beatDuration = 500, synthRef = null) {
       this.beatIndicator = beatIndicator;
-      this.beats = beats;
-      this.beatDuration = beatDuration;
-      this.measureDuration = beats * beatDuration;
-      this.synthRef = synthRef;  // optional reference if you wanna forcibly stop all osc
+      this.beats = beats;          // 4
+      this.subStepsPerBeat = 4;    // for 16th-note resolution
+      this.stepsPerMeasure = this.beats * this.subStepsPerBeat; // 16 steps total
+      this.beatDuration = beatDuration; // ms for a single beat
+      this.stepDuration = beatDuration / this.subStepsPerBeat;  // ms per step
+      this.measureDuration = this.beats * this.beatDuration;  // total ms per measure
+  
+      this.synthRef = synthRef;
   
       this.isLooping = false;
-      this.currentMeasureStartTime = null;
-  
       this.loopTimer = null;
-      this.scheduledTimeouts = []; // store handles for setTimeout calls
+      this.scheduledTimeouts = [];
   
-      // each record: { startBeat, endBeat, playOnFn, playOffFn }
+      // each record: { startStep, endStep, playOnFn, playOffFn }
       this.noteRecords = [];
     }
   
@@ -24,28 +26,22 @@ export class Looper {
   
     stop() {
       this.isLooping = false;
-      
-      // clear the main loop timer
       clearTimeout(this.loopTimer);
-  
-      // clear all setTimeout calls
       this.scheduledTimeouts.forEach(handle => clearTimeout(handle));
       this.scheduledTimeouts = [];
   
-      // forcibly stop *any currently playing notes* if you have a handle to the synth
-      if (this.synthRef) {
-        this.synthRef.stopAllOscillators?.();
+      if (this.synthRef?.stopAllOscillators) {
+        this.synthRef.stopAllOscillators();
       }
     }
   
     scheduleNextLoop() {
       if (!this.isLooping) return;
-      this.currentMeasureStartTime = performance.now();
   
-      // schedule note-ons/note-offs
+      // schedule note-on/off for each record
       this.noteRecords.forEach(record => {
-        const onDelay = record.startBeat * this.beatDuration;
-        const offDelay = record.endBeat * this.beatDuration;
+        const onDelay = record.startStep * this.stepDuration;
+        const offDelay = record.endStep * this.stepDuration;
   
         const onHandle = setTimeout(() => {
           if (!this.isLooping) return;
@@ -60,7 +56,7 @@ export class Looper {
         this.scheduledTimeouts.push(offHandle);
       });
   
-      // beat indicator logic
+      // beat indicator (just updates every beat, not step)
       let beatCounter = 0;
       const beatInterval = setInterval(() => {
         if (!this.isLooping) {
@@ -71,10 +67,10 @@ export class Looper {
         this.beatIndicator.textContent = `beat: ${beatCounter + 1}/${this.beats}`;
       }, this.beatDuration);
   
-      // schedule next measure
+      // loop timer
       this.loopTimer = setTimeout(() => {
         clearInterval(beatInterval);
-        this.scheduledTimeouts = []; // reset the array bc these timeouts are done
+        this.scheduledTimeouts = [];
         this.scheduleNextLoop(); 
       }, this.measureDuration);
     }
@@ -83,9 +79,18 @@ export class Looper {
       this.noteRecords = [];
     }
   
-    addNoteRecord(startBeat, endBeat, playOnFn, playOffFn) {
-      if (endBeat > this.beats) endBeat = this.beats;
-      this.noteRecords.push({ startBeat, endBeat, playOnFn, playOffFn });
+    addNoteRecord(startStep, endStep, playOnFn, playOffFn) {
+      // clamp to [0..stepsPerMeasure]
+      if (startStep < 0) startStep = 0;
+      if (endStep < 0) endStep = 0;
+      if (startStep >= this.stepsPerMeasure) startStep = this.stepsPerMeasure - 1;
+      if (endStep >= this.stepsPerMeasure) endStep = this.stepsPerMeasure - 1;
+  
+      // if endStep < startStep, you can decide to interpret that differently, 
+      // or treat them as a short one-step event
+      if (endStep < startStep) endStep = startStep;
+  
+      this.noteRecords.push({ startStep, endStep, playOnFn, playOffFn });
     }
   }
   

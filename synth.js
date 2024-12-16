@@ -88,12 +88,11 @@ export function initSynth(container) {
     keyEl.textContent = n.note;
 
     let playingOscIds = [];
-    let startBeat = null;
+    let startStep = null;
 
     keyEl.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      const fracBeat = getFractionalBeat(); 
-      startBeat = fracBeat;
+      startStep = getQuantizedStep(4, 4); // pick step 0..15
 
       playingOscIds = synth.playChordOn(i, noteData);
       keyEl.classList.add('active');
@@ -101,15 +100,15 @@ export function initSynth(container) {
 
     keyEl.addEventListener('pointerup', (e) => {
       e.preventDefault();
-      const endBeat = getFractionalBeat();
+      const endStep = getQuantizedStep(4, 4);
+
       const chordIds = [...playingOscIds];
       synth.playChordOff(chordIds);
 
       keyEl.classList.remove('active');
       playingOscIds = [];
 
-      // record the note if looper is active
-      if (looperRef?.isLooping && startBeat !== null) {
+      if (looperRef?.isLooping && startStep !== null) {
         const wave = synth.waveform;
         const vol = synth.volume;
         const isChord = synth.chordMode;
@@ -126,9 +125,9 @@ export function initSynth(container) {
           }
         };
 
-        looperRef.addNoteRecord(startBeat, endBeat, playOnFn, playOffFn);
+        looperRef.addNoteRecord(startStep, endStep, playOnFn, playOffFn);
       }
-      startBeat = null;
+      startStep = null;
     });
 
     // pointercancel/pointerleave => stop note
@@ -209,3 +208,16 @@ function chordIndicesToOscIDs(rootIndex, chordMode, wave, volume, synth) {
   const chordIndices = triads[rootIndex];
   return chordIndices.map(idx => synth.noteOn(noteData[idx].freq));
 }
+
+
+function getQuantizedStep(beats, subStepsPerBeat) {
+    const measureDuration = beats * 500; // 4 * 500 = 2000ms
+    const stepDuration = measureDuration / (beats * subStepsPerBeat); // 125ms
+    const now = performance.now();
+    const msInCurrentMeasure = now % measureDuration;
+    const stepFloat = msInCurrentMeasure / stepDuration; 
+    // snap to nearest step
+    const step = Math.round(stepFloat);
+    // clamp to 0..(beats*subStepsPerBeat - 1)
+    return Math.min(step, beats * subStepsPerBeat - 1);
+  }

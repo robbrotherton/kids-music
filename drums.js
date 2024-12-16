@@ -1,14 +1,5 @@
 import { looperRef } from './globalState.js';
 
-function getFractionalBeat() {
-  // 4 beats, 500ms each => 2000ms measure
-  // figure out fractional beat from performance.now()
-  const now = performance.now();
-  const msThisMeasure = now % 2000; 
-  const fracBeat = msThisMeasure / 500;
-  return fracBeat;
-}
-
 export function initDrums(container) {
   const drumSounds = {
     kick: new Audio('assets/drums/808-Kicks01.wav'),
@@ -24,29 +15,37 @@ export function initDrums(container) {
     padEl.textContent = sound;
 
     padEl.addEventListener('pointerdown', () => {
-      // play instantly
       drumSounds[sound].currentTime = 0;
       drumSounds[sound].play();
       padEl.classList.add('active');
       setTimeout(() => padEl.classList.remove('active'), 200);
 
       if (looperRef?.isLooping) {
-        // record a note that starts & ends almost immediately
-        // so it re-triggers each loop
-        const startBeat = getFractionalBeat();
-        const endBeat = startBeat + 0.05; // just 1/20th of a beat for a quick drum
-
+        const step = getQuantizedStep(4, 4); 
+        // record an event lasting just 1 step
         const playOnFn = () => {
           drumSounds[sound].currentTime = 0;
           drumSounds[sound].play();
         };
-        // single-shot drum has no real "off" event, but let's define an empty func
         const playOffFn = () => {};
 
-        looperRef.addNoteRecord(startBeat, endBeat, playOnFn, playOffFn);
+        looperRef.addNoteRecord(step, step + 1, playOnFn, playOffFn);
       }
     });
 
     container.appendChild(padEl);
   });
+}
+
+function getQuantizedStep(beats, subStepsPerBeat) {
+  // each measure has beats * subStepsPerBeat steps (16)
+  const measureDuration = beats * 500; // 4 beats * 500ms each = 2000ms
+  const stepDuration = measureDuration / (beats * subStepsPerBeat); // 2000 / 16 = 125ms
+  // find time mod measure
+  const now = performance.now();
+  const msInCurrentMeasure = now % measureDuration;
+  // figure out which step
+  const stepFloat = msInCurrentMeasure / stepDuration; // float in [0..16)
+  const step = Math.round(stepFloat); // nearest step
+  return step;
 }
