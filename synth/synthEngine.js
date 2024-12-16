@@ -17,8 +17,8 @@ export class SynthEngine {
     this.tremoloGain = new Tone.Gain(1);
     this.tremoloLFO = new Tone.LFO({
       frequency: 4,
-      min: 0.5,     // Start at center
-      max: 0.5,     // Start at center (no effect)
+      min: 1,        // Start with no effect (full volume)
+      max: 1,        // Start with no effect (full volume)
       type: 'sine'
     }).connect(this.tremoloGain.gain);
 
@@ -81,14 +81,20 @@ export class SynthEngine {
   }
 
   setTremoloDepth(depth) {
-    // Adjust the LFO range to maintain a constant maximum volume
-    const center = 0.5;
-    const range = depth / 2;
-    this.tremoloLFO.min = center - range;
-    this.tremoloLFO.max = center + range;
-    
-    // Bypass tremolo when depth is 0
-    this.tremoloGain.gain.value = depth === 0 ? 1 : center;
+    // Scale depth from 0-1 range to proper gain values
+    if (depth === 0) {
+      // No tremolo - fixed gain at 1
+      this.tremoloLFO.min = 1;
+      this.tremoloLFO.max = 1;
+      this.tremoloGain.gain.value = 1;
+    } else {
+      // Map depth to gain range
+      // At full depth (1.0): min=0 (silence) to max=1 (full volume)
+      // At partial depth: min=1-depth to max=1
+      this.tremoloLFO.min = Math.max(0, 1 - depth);
+      this.tremoloLFO.max = 1;
+      this.tremoloGain.gain.value = this.tremoloLFO.min;  // Start at minimum
+    }
   }
 
   setVibratoRate(rate) {
