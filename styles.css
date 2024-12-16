@@ -34,15 +34,19 @@ h1 {
 .container.active {
   display: grid;
   gap: 10px;
+  justify-content: center;
 }
 
 #drum-view {
-  grid-template-columns: repeat(4, 80px);
+  width: 80%;
+  grid-template-columns: repeat(2, 1fr); /* Ensure 2 columns */
 }
 
 .drum-pad {
-  width: 80px;
-  height: 80px;
+  color: black;
+  width: 100%;
+  padding-top: 100%; /* Maintain square aspect ratio */
+  position: relative;
   background: #555;
   border-radius: 8px;
   display: flex;
@@ -51,10 +55,20 @@ h1 {
   touch-action: none;
   cursor: pointer;
   user-select: none;
+  text-align: center; /* Center text horizontally */
+}
+
+.drum-pad::after {
+  content: attr(data-sound);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center; /* Center text horizontally */
 }
 
 .drum-pad.active {
-  background: #ff5722;
+  /* background: #ff5722; */
 }
 
 #synth-view {

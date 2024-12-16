@@ -2,6 +2,7 @@ import { looperRef } from './globalState.js';
 import { getQuantizedStep } from './utils.js';
 
 export function initDrums(container) {
+
   const drumSounds = {
     kick: new Audio('assets/drums/808-Kicks01.wav'),
     snare: new Audio('assets/drums/808-Snare01.wav'),
@@ -10,10 +11,13 @@ export function initDrums(container) {
   };
 
   const pads = ['kick', 'snare', 'hihat', 'clap'];
-  pads.forEach(sound => {
+  const colors = ['#FF5733', '#33FF57', '#3357FF', '#FF33A1']; // Add more colors as needed
+
+  pads.forEach((sound, index) => {
     const padEl = document.createElement('div');
     padEl.classList.add('drum-pad');
     padEl.textContent = sound;
+    padEl.style.backgroundColor = colors[index % colors.length]; // Assign color from palette
 
     padEl.addEventListener('pointerdown', () => {
       drumSounds[sound].currentTime = 0;
