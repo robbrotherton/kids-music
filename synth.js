@@ -1,74 +1,77 @@
 import { looperRef } from './globalState.js';
 
+let oscIdCounter = 0;
+
 export class Synthesizer {
   constructor() {
     this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     this.waveform = 'sine';
     this.volume = 0.5;
-    this.currentKey = 'C';       // the global key
     this.chordMode = true;
+    this.activeOscillators = {};
   }
 
-  playNote(freq, duration = 0.5) {
-    // spawn an oscillator, connect gain, play for duration
+  noteOn(freq) {
     const osc = this.audioCtx.createOscillator();
     const gain = this.audioCtx.createGain();
     osc.type = this.waveform;
     osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
     gain.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
+
     osc.connect(gain);
     gain.connect(this.audioCtx.destination);
     osc.start();
-    osc.stop(this.audioCtx.currentTime + duration);
+
+    const id = 'osc_' + (oscIdCounter++);
+    this.activeOscillators[id] = { osc, gain };
+    return id;
   }
 
-  // if chord mode is on, play triad
-  // otherwise single note
-  playChord(rootIndex, noteData) {
-    if (!this.chordMode) {
-      // just play single note
-      this.playNote(noteData[rootIndex].freq);
-      return;
-    }
-    // in major scale chord logic, these chord qualities hold:
-    // index:  0   1    2    3   4    5    6
-    // chord:  I   ii   iii  IV  V    vi   vii°
-    // intervals are different depending on major/minor/dim
-    // but let's just store precomputed triads for each key
+  noteOff(oscId) {
+    if (!this.activeOscillators[oscId]) return;
+    const { osc, gain } = this.activeOscillators[oscId];
+    gain.gain.exponentialRampToValueAtTime(0.0001, this.audioCtx.currentTime + 0.2);
+    osc.stop(this.audioCtx.currentTime + 0.21);
+    delete this.activeOscillators[oscId];
+  }
 
-    // basic triads in the key of C for indices 0..6:
-    // C(0) = C, E, G
-    // D(1) = D, F, A
-    // E(2) = E, G, B
-    // F(3) = F, A, C
-    // G(4) = G, B, D
-    // A(5) = A, C, E
-    // B(6) = B, D, F
-
-    // let's do a quick approach: figure out the offsets in semitones
-    // or we can map them directly from noteData if it's always 7 notes in a row
-    // but simpler: just store the triad indices
-    const triads = [
-      [0, 2, 4], // I
-      [1, 3, 5], // ii
-      [2, 4, 6], // iii
-      [3, 5, 0], // IV
-      [4, 6, 1], // V
-      [5, 0, 2], // vi
-      [6, 1, 3], // vii°
-    ];
-
-    const triad = triads[rootIndex];
-    triad.forEach(idx => {
-      const freq = noteData[idx].freq;
-      this.playNote(freq);
+  stopAllOscillators() {
+    Object.keys(this.activeOscillators).forEach(id => {
+      this.noteOff(id);
     });
+  }
+
+  playChordOn(rootIndex, noteData) {
+    // if chordMode is off, single note only
+    if (!this.chordMode) {
+      return [this.noteOn(noteData[rootIndex].freq)];
+    }
+    // diatonic triads in a major scale
+    const triads = [
+      [0, 2, 4],
+      [1, 3, 5],
+      [2, 4, 6],
+      [3, 5, 0],
+      [4, 6, 1],
+      [5, 0, 2],
+      [6, 1, 3]
+    ];
+    const chordIndices = triads[rootIndex];
+    return chordIndices.map(idx => this.noteOn(noteData[idx].freq));
+  }
+
+  playChordOff(oscIds) {
+    oscIds.forEach(id => this.noteOff(id));
   }
 }
 
+/**
+ * initSynth creates a new Synthesizer instance, builds the UI,
+ * and returns the synth instance so we can pass it to the looper.
+ */
 export function initSynth(container) {
   const synth = new Synthesizer();
-  // 7 notes in a single octave (like before)
+
   const noteData = [
     { note: 'C', freq: 261.63 },
     { note: 'D', freq: 293.66 },
@@ -84,25 +87,65 @@ export function initSynth(container) {
     keyEl.classList.add('synth-key');
     keyEl.textContent = n.note;
 
-    keyEl.addEventListener('pointerdown', () => {
-      // immediate chord
-      synth.playChord(i, noteData);
+    let playingOscIds = [];
+    let startBeat = null;
 
-      // record chord event for looper
-      if (looperRef && looperRef.isLooping) {
-        looperRef.recordEvent(() => {
-          synth.playChord(i, noteData);
-        });
-      }
+    keyEl.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const fracBeat = getFractionalBeat(); 
+      startBeat = fracBeat;
 
+      playingOscIds = synth.playChordOn(i, noteData);
       keyEl.classList.add('active');
-      setTimeout(() => keyEl.classList.remove('active'), 200);
     });
+
+    keyEl.addEventListener('pointerup', (e) => {
+      e.preventDefault();
+      const endBeat = getFractionalBeat();
+      const chordIds = [...playingOscIds];
+      synth.playChordOff(chordIds);
+
+      keyEl.classList.remove('active');
+      playingOscIds = [];
+
+      // record the note if looper is active
+      if (looperRef?.isLooping && startBeat !== null) {
+        const wave = synth.waveform;
+        const vol = synth.volume;
+        const isChord = synth.chordMode;
+        const chordIndex = i;
+
+        let replayOscIds = null;
+        const playOnFn = () => {
+          replayOscIds = chordIndicesToOscIDs(chordIndex, isChord, wave, vol, synth);
+        };
+        const playOffFn = () => {
+          if (replayOscIds) {
+            replayOscIds.forEach(id => synth.noteOff(id));
+            replayOscIds = null;
+          }
+        };
+
+        looperRef.addNoteRecord(startBeat, endBeat, playOnFn, playOffFn);
+      }
+      startBeat = null;
+    });
+
+    // pointercancel/pointerleave => stop note
+    ['pointercancel','pointerleave'].forEach(evtName => {
+      keyEl.addEventListener(evtName, () => {
+        if (playingOscIds.length) {
+          synth.playChordOff(playingOscIds);
+          playingOscIds = [];
+          keyEl.classList.remove('active');
+        }
+      });
+    });
+
     container.appendChild(keyEl);
   });
 
-  // add some controls
-  // waveform select
+  // waveform dropdown
   const waveSelect = document.createElement('select');
   ['sine', 'square', 'sawtooth', 'triangle'].forEach(w => {
     const opt = document.createElement('option');
@@ -132,4 +175,37 @@ export function initSynth(container) {
   chordToggle.addEventListener('change', () => synth.chordMode = chordToggle.checked);
   chordToggleLabel.appendChild(chordToggle);
   container.appendChild(chordToggleLabel);
+
+  return synth; // <--- return the created synth
+}
+
+// utility to get fractional beat
+function getFractionalBeat() {
+  // 4 beats * 500ms each => 2000ms per measure
+  // how far into the measure are we?
+  const now = performance.now();
+  const msThisMeasure = now % 2000; 
+  const fracBeat = msThisMeasure / 500; 
+  return fracBeat;
+}
+
+// utility to replicate chord logic
+function chordIndicesToOscIDs(rootIndex, chordMode, wave, volume, synth) {
+  const triads = [
+    [0,2,4],[1,3,5],[2,4,6],[3,5,0],
+    [4,6,1],[5,0,2],[6,1,3]
+  ];
+  const noteData = [
+    { freq: 261.63 },{ freq: 293.66 },{ freq: 329.63 },
+    { freq: 349.23 },{ freq: 392.00 },{ freq: 440.00 },{ freq: 493.88 },
+  ];
+
+  synth.waveform = wave;
+  synth.volume = volume;
+
+  if (!chordMode) {
+    return [ synth.noteOn(noteData[rootIndex].freq) ];
+  }
+  const chordIndices = triads[rootIndex];
+  return chordIndices.map(idx => synth.noteOn(noteData[idx].freq));
 }

@@ -48,8 +48,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    touch-action: manipulation;
+    touch-action: none;
     cursor: pointer;
+    user-select: none;
   }
   
   .drum-pad.active {
@@ -69,6 +70,8 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    user-select: none;
+    touch-action: none;
   }
   
   .synth-key.active {

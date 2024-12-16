@@ -1,52 +1,91 @@
 export class Looper {
-    constructor(beatIndicator, beats = 4) {
+    constructor(beatIndicator, beats = 4, beatDuration = 500, synthRef = null) {
       this.beatIndicator = beatIndicator;
-      this.beats = beats;           // how many beats per loop
-      this.isLooping = false;
-      this.loopInterval = null;
-      this.beatDuration = 500;      // ms per beat
-      this.currentBeat = 0;
+      this.beats = beats;
+      this.beatDuration = beatDuration;
+      this.measureDuration = beats * beatDuration;
+      this.synthRef = synthRef;  // optional reference if you wanna forcibly stop all osc
   
-      // array of length = number of beats. each element is an array of "events"
-      // an event is { type: 'drum'|'synth', sound: 'kick'|'snare'|frequencyNumber }
-      this.recordedEvents = Array.from({ length: this.beats }, () => []);
+      this.isLooping = false;
+      this.currentMeasureStartTime = null;
+  
+      this.loopTimer = null;
+      this.scheduledTimeouts = []; // store handles for setTimeout calls
+  
+      // each record: { startBeat, endBeat, playOnFn, playOffFn }
+      this.noteRecords = [];
     }
   
     start() {
       if (this.isLooping) return;
       this.isLooping = true;
-      this.currentBeat = -1;
-  
-      this.loopInterval = setInterval(() => {
-        this.currentBeat = (this.currentBeat + 1) % this.beats;
-        this.updateBeatIndicator();
-        // replay all events stored for this beat
-        const events = this.recordedEvents[this.currentBeat];
-        events.forEach(evt => {
-          evt.playFn(); // we store a direct reference to the play function
-        });
-      }, this.beatDuration);
+      this.scheduleNextLoop();
     }
   
     stop() {
-      if (!this.isLooping) return;
       this.isLooping = false;
-      clearInterval(this.loopInterval);
+      
+      // clear the main loop timer
+      clearTimeout(this.loopTimer);
+  
+      // clear all setTimeout calls
+      this.scheduledTimeouts.forEach(handle => clearTimeout(handle));
+      this.scheduledTimeouts = [];
+  
+      // forcibly stop *any currently playing notes* if you have a handle to the synth
+      if (this.synthRef) {
+        this.synthRef.stopAllOscillators?.();
+      }
     }
   
-    updateBeatIndicator() {
-      this.beatIndicator.textContent = `beat: ${this.currentBeat + 1}/${this.beats}`;
-    }
+    scheduleNextLoop() {
+      if (!this.isLooping) return;
+      this.currentMeasureStartTime = performance.now();
   
-    // record an event in the current beat. 
-    // pass in the function to call when that beat is triggered
-    recordEvent(playFn) {
-      if (!this.isLooping) return; // only record if loop is running
-      this.recordedEvents[this.currentBeat].push({ playFn });
+      // schedule note-ons/note-offs
+      this.noteRecords.forEach(record => {
+        const onDelay = record.startBeat * this.beatDuration;
+        const offDelay = record.endBeat * this.beatDuration;
+  
+        const onHandle = setTimeout(() => {
+          if (!this.isLooping) return;
+          record.playOnFn && record.playOnFn();
+        }, onDelay);
+        this.scheduledTimeouts.push(onHandle);
+  
+        const offHandle = setTimeout(() => {
+          if (!this.isLooping) return;
+          record.playOffFn && record.playOffFn();
+        }, offDelay);
+        this.scheduledTimeouts.push(offHandle);
+      });
+  
+      // beat indicator logic
+      let beatCounter = 0;
+      const beatInterval = setInterval(() => {
+        if (!this.isLooping) {
+          clearInterval(beatInterval);
+          return;
+        }
+        beatCounter = (beatCounter + 1) % this.beats;
+        this.beatIndicator.textContent = `beat: ${beatCounter + 1}/${this.beats}`;
+      }, this.beatDuration);
+  
+      // schedule next measure
+      this.loopTimer = setTimeout(() => {
+        clearInterval(beatInterval);
+        this.scheduledTimeouts = []; // reset the array bc these timeouts are done
+        this.scheduleNextLoop(); 
+      }, this.measureDuration);
     }
   
     clearAllEvents() {
-      this.recordedEvents = Array.from({ length: this.beats }, () => []);
+      this.noteRecords = [];
+    }
+  
+    addNoteRecord(startBeat, endBeat, playOnFn, playOffFn) {
+      if (endBeat > this.beats) endBeat = this.beats;
+      this.noteRecords.push({ startBeat, endBeat, playOnFn, playOffFn });
     }
   }
   
