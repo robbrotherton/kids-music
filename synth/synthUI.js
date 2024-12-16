@@ -8,13 +8,13 @@ import { createFilterControls } from './filterControls.js';
  */
 export function createSynthUI(container, synthEngine, looperRef) {
   const noteData = [
-    { note: 'C', freq: 261.63 },
-    { note: 'D', freq: 293.66 },
-    { note: 'E', freq: 329.63 },
-    { note: 'F', freq: 349.23 },
-    { note: 'G', freq: 392.0 },
-    { note: 'A', freq: 440.0 },
-    { note: 'B', freq: 493.88 },
+    { note: 'C', freq: 'C4' },
+    { note: 'D', freq: 'D4' },
+    { note: 'E', freq: 'E4' },
+    { note: 'F', freq: 'F4' },
+    { note: 'G', freq: 'G4' },
+    { note: 'A', freq: 'A4' },
+    { note: 'B', freq: 'B4' },
   ];
 
   noteData.forEach((n, i) => {
@@ -22,62 +22,41 @@ export function createSynthUI(container, synthEngine, looperRef) {
     keyEl.classList.add('synth-key');
     keyEl.textContent = n.note;
 
-    let playingOscIds = [];
     let startStep = null;
 
-    keyEl.addEventListener('pointerdown', e => {
+    keyEl.addEventListener('pointerdown', async e => {
       e.preventDefault();
-
-      // build chord or single note array
-      const chordIndices = buildChordIndices(
-        i,
-        synthEngine.chordMode ? 'triad' : 'single'
-      );
-      playingOscIds = chordIndices.map(idx => synthEngine.noteOn(noteData[idx].freq));
+      if (Tone.context.state !== 'running') {
+        await Tone.start();
+        console.log('Tone.js context started');
+      }
+      const chordIndices = buildChordIndices(i, synthEngine.chordMode ? 'triad' : 'single');
+      chordIndices.forEach(idx => synthEngine.noteOn(noteData[idx].freq));
       keyEl.classList.add('active');
 
-      // if looper is active, record the "start step"
       if (looperRef?.isLooping) {
-        // this quantizes your press to nearest step
         startStep = getQuantizedStep(4, 4, looperRef.beatDuration);
       }
     });
 
     keyEl.addEventListener('pointerup', e => {
       e.preventDefault();
-      const chordIds = [...playingOscIds];
-      chordIds.forEach(id => synthEngine.noteOff(id));
+      const chordIndices = buildChordIndices(i, synthEngine.chordMode ? 'triad' : 'single');
+      chordIndices.forEach(idx => synthEngine.noteOff(noteData[idx].freq));
       keyEl.classList.remove('active');
-      playingOscIds = [];
 
       if (looperRef?.isLooping && startStep !== null) {
-        // quantize release
         const endStep = getQuantizedStep(4, 4, looperRef.beatDuration);
-
-        // define the replay logic
-        let replayOscIds = null;
-        const playOnFn = () => {
-          // rebuild chord
-          const chordIndices = buildChordIndices(
-            i,
-            synthEngine.chordMode ? 'triad' : 'single'
-          );
-          replayOscIds = chordIndices.map(idx => synthEngine.noteOn(noteData[idx].freq));
-        };
-        const playOffFn = () => {
-          if (replayOscIds) {
-            replayOscIds.forEach(id => synthEngine.noteOff(id));
-            replayOscIds = null;
-          }
-        };
-
-        looperRef.addNoteRecord(startStep, endStep, playOnFn, playOffFn);
+        looperRef.addNoteRecord(startStep, endStep, () => {
+          chordIndices.forEach(idx => synthEngine.noteOn(noteData[idx].freq));
+        }, () => {
+          chordIndices.forEach(idx => synthEngine.noteOff(noteData[idx].freq));
+        });
       }
       startStep = null;
     });
 
     container.appendChild(keyEl);
-
   });
 
   // waveform select

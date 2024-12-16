@@ -13,5 +13,14 @@ export function initSynth(container, looperRef) {
   if (looperRef) {
     engine.setLooperRef(looperRef);
   }
+
+  // Initialize Tone.js context on user interaction
+  container.addEventListener('click', async () => {
+    if (Tone.context.state !== 'running') {
+      await Tone.start();
+      console.log('Tone.js context started');
+    }
+  });
+
   return engine;
 }
