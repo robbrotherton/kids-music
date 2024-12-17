@@ -16,23 +16,63 @@ export function createSynthUI(container, synthEngine, looperRef) {
     { note: 'B', freq: 'B4' },
   ];
 
+  let activeKey = null;
+  let activeNoteIndex = null;
+  let startStep = null;
+
+  const stopCurrentNote = () => {
+    if (activeNoteIndex !== null) {
+      const chordIndices = buildChordIndices(activeNoteIndex, synthEngine.chordMode ? 'triad' : 'single');
+      chordIndices.forEach(idx => synthEngine.noteOff(noteData[idx].freq));
+      if (activeKey) {
+        activeKey.classList.remove('active');
+      }
+    }
+  };
+
+  const startNote = (keyEl, noteIndex) => {
+    // Record the end of the previous note if we're sliding
+    if (looperRef?.isLooping && activeNoteIndex !== null) {
+      const endStep = looperRef.currentStep;
+      const chordIndices = buildChordIndices(activeNoteIndex, synthEngine.chordMode ? 'triad' : 'single');
+      looperRef.addNoteRecord(startStep, endStep,
+        (time) => {
+          chordIndices.forEach(idx => synthEngine.noteOn(noteData[idx].freq, time));
+        },
+        (time) => {
+          chordIndices.forEach(idx => synthEngine.noteOff(noteData[idx].freq, time));
+        }
+      );
+    }
+
+    stopCurrentNote();
+    activeKey = keyEl;
+    activeNoteIndex = noteIndex;
+    const chordIndices = buildChordIndices(noteIndex, synthEngine.chordMode ? 'triad' : 'single');
+    chordIndices.forEach(idx => synthEngine.noteOn(noteData[idx].freq));
+    keyEl.classList.add('active');
+
+    // Start recording the new note
+    if (looperRef?.isLooping) {
+      startStep = looperRef.currentStep;
+    }
+  };
+
   noteData.forEach((n, i) => {
     const keyEl = document.createElement('div');
     keyEl.classList.add('synth-key');
     keyEl.textContent = n.note;
 
-    let startStep = null;
-
     keyEl.addEventListener('pointerdown', async e => {
       e.preventDefault();
+      keyEl.setPointerCapture(e.pointerId);
+      
+      // Ensure Tone.js is started before any sound
       if (Tone.context.state !== 'running') {
         await Tone.start();
-        console.log('Tone.js context started');
       }
-      const chordIndices = buildChordIndices(i, synthEngine.chordMode ? 'triad' : 'single');
-      chordIndices.forEach(idx => synthEngine.noteOn(noteData[idx].freq));
-      keyEl.classList.add('active');
-
+      
+      startNote(keyEl, i);
       if (looperRef?.isLooping) {
         startStep = looperRef.currentStep;
       }
@@ -40,22 +80,49 @@ export function createSynthUI(container, synthEngine, looperRef) {
 
     keyEl.addEventListener('pointerup', e => {
       e.preventDefault();
-      const chordIndices = buildChordIndices(i, synthEngine.chordMode ? 'triad' : 'single');
-      chordIndices.forEach(idx => synthEngine.noteOff(noteData[idx].freq));
-      keyEl.classList.remove('active');
-
-      if (looperRef?.isLooping && startStep !== null) {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      
+      // Record the final note release
+      if (looperRef?.isLooping && activeNoteIndex !== null && startStep !== null) {
         const endStep = looperRef.currentStep;
-        looperRef.addNoteRecord(startStep, endStep, 
+        const chordIndices = buildChordIndices(activeNoteIndex, synthEngine.chordMode ? 'triad' : 'single');
+        looperRef.addNoteRecord(startStep, endStep,
           (time) => {
             chordIndices.forEach(idx => synthEngine.noteOn(noteData[idx].freq, time));
-          }, 
+          },
           (time) => {
             chordIndices.forEach(idx => synthEngine.noteOff(noteData[idx].freq, time));
           }
         );
       }
+      
+      stopCurrentNote();
+      activeKey = null;
+      activeNoteIndex = null;
       startStep = null;
+    });
+
+    keyEl.addEventListener('pointercancel', e => {
+      e.preventDefault();
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      stopCurrentNote();
+      activeKey = null;
+      activeNoteIndex = null;
+      startStep = null;
+    });
+
+    keyEl.addEventListener('pointermove', e => {
+      e.preventDefault();
+      if (e.buttons > 0 && e.currentTarget.hasPointerCapture(e.pointerId)) {
+        const targetKey = document.elementFromPoint(e.clientX, e.clientY);
+        if (targetKey?.classList.contains('synth-key') && targetKey !== activeKey) {
+          startNote(targetKey, Array.from(container.children).indexOf(targetKey));
+        }
+      }
     });
 
     container.appendChild(keyEl);
@@ -111,6 +178,18 @@ export function createSynthUI(container, synthEngine, looperRef) {
   });
   chordToggleLabel.appendChild(chordToggle);
   container.appendChild(chordToggleLabel);
+
+  // portamento toggle
+  const portamentoLabel = document.createElement('label');
+  portamentoLabel.textContent = ' glide ';
+  const portamentoToggle = document.createElement('input');
+  portamentoToggle.type = 'checkbox';
+  portamentoToggle.checked = false;
+  portamentoToggle.addEventListener('change', () => {
+    synthEngine.setPortamento(portamentoToggle.checked ? 0.1 : 0);
+  });
+  portamentoLabel.appendChild(portamentoToggle);
+  container.appendChild(portamentoLabel);
 
   // create and append filter controls
   createFilterControls(container, synthEngine);

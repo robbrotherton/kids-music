@@ -297,4 +297,10 @@ export class SynthEngine {
     const compensationGain = Tone.dbToGain(compensationDb);
     this.distortionCompensation.gain.linearRampToValueAtTime(compensationGain, now + 0.1);
   }
+
+  setPortamento(time) {
+    this.synth.set({
+      portamento: time
+    });
+  }
 }
