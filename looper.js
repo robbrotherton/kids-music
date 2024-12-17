@@ -26,8 +26,17 @@ export class Looper {
     }
     this.updateStepHighlight(-1);
 
-    // Tone.js Transport setup
+    // Tone.js Transport setup - simplified
+    Tone.Transport.timeSignature = beats;
     Tone.Transport.bpm.value = 60000 / this.beatDuration;
+    
+    // Single Part setup (remove the duplicate)
+    this.part = new Tone.Sequence((time, step) => {
+      this.currentStep = step;
+      this.updateStepHighlight(step);
+    }, [...Array(this.stepsPerMeasure).keys()], "16n").start(0);
+    
+    // Keep the original transport callback for note playback
     Tone.Transport.scheduleRepeat(this.loop.bind(this), '16n');
   }
 
@@ -55,20 +64,20 @@ export class Looper {
     }
   }
 
+  // Keep original loop method for now
   loop(time) {
     if (!this.isLooping) return;
 
     this.currentStep = Math.floor((Tone.Transport.ticks / (Tone.Transport.PPQ / 4))) % this.stepsPerMeasure;
     this.updateStepHighlight(this.currentStep);
 
+    // Keep processing existing noteRecords
     this.noteRecords.forEach(record => {
       const stepInMeasure = record.startStep % this.stepsPerMeasure;
       if (stepInMeasure === this.currentStep) {
-        console.log(`Playing note on at step ${this.currentStep}`);
         record.playOnFn && record.playOnFn(time);
       }
       if ((record.endStep % this.stepsPerMeasure) === this.currentStep) {
-        console.log(`Playing note off at step ${this.currentStep}`);
         record.playOffFn && record.playOffFn(time);
       }
     });
@@ -82,12 +91,16 @@ export class Looper {
 
   clearAllEvents() {
     this.noteRecords = [];
+    // Clear sequence events instead of trying to remove them
+    this.part.events = [];
   }
 
   addNoteRecord(startStep, endStep, playOnFn, playOffFn) {
     if (startStep >= this.stepsPerMeasure * 2) startStep = this.stepsPerMeasure * 2 - 1;
     if (endStep >= this.stepsPerMeasure * 2) endStep = this.stepsPerMeasure * 2 - 1;
     if (endStep < startStep) endStep = startStep;
+    
+    // Just use the noteRecords array for now
     this.noteRecords.push({ startStep, endStep, playOnFn, playOffFn });
   }
 
