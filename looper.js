@@ -9,6 +9,7 @@ export class Looper {
 
     this.synthRef = synthRef;
     this.isLooping = false;
+    this.isRecording = false;
 
     this.noteRecords = [];
     this.stepDots = [];
@@ -57,11 +58,10 @@ export class Looper {
 
   stop() {
     this.isLooping = false;
-    Tone.Transport.stop();
-    console.log('Looper stopped');
-    this.updateStepHighlight(-1); // Clear step indicator
+    Tone.Transport.pause(); // Changed from stop() to pause() to maintain position
+    this.updateStepHighlight(-1);
 
-    // Make sure to release all notes and reset synth state
+    // Only stop active notes, don't clear the records
     if (this.synthRef) {
       this.noteRecords.forEach(record => {
         record.playOffFn && record.playOffFn();
@@ -82,7 +82,14 @@ export class Looper {
     this.noteRecords = [];
   }
 
+  setRecording(state) {
+    this.isRecording = state;
+  }
+
   addNoteRecord(startStep, endStep, playOnFn, playOffFn) {
+    // Only add notes if we're recording
+    if (!this.isRecording) return;
+    
     if (startStep >= this.stepsPerMeasure * 2) startStep = this.stepsPerMeasure * 2 - 1;
     if (endStep >= this.stepsPerMeasure * 2) endStep = this.stepsPerMeasure * 2 - 1;
     if (endStep < startStep) endStep = startStep;

@@ -7,10 +7,12 @@ const drumViewBtn = document.getElementById('drum-view-btn');
 const synthViewBtn = document.getElementById('synth-view-btn');
 const drumView = document.getElementById('drum-view');
 const synthView = document.getElementById('synth-view');
-const loopToggleBtn = document.getElementById('loop-toggle-btn');
 const statusSpan = document.getElementById('status');
 const stepIndicatorContainer = document.getElementById('step-indicator');
 const bpmInput = document.getElementById('bpm-input');
+const recordBtn = document.getElementById('record-btn');
+const playPauseBtn = document.getElementById('play-pause-btn');
+const clearBtn = document.getElementById('clear-btn');
 
 // 1) create drums
 initDrums(drumView);
@@ -45,18 +47,47 @@ synthViewBtn.addEventListener('click', () => {
   drumView.classList.remove('active');
 });
 
-// loop start/stop
-loopToggleBtn.addEventListener('click', () => {
-  if (!looper.isLooping) {
-    looper.start();
-    statusSpan.textContent = 'looping...';
-    loopToggleBtn.textContent = 'stop loop';
-  } else {
-    looper.stop();
-    statusSpan.textContent = 'not looping';
-    loopToggleBtn.textContent = 'start loop';
+let isRecording = false;
+
+// Record button
+recordBtn.addEventListener('click', () => {
+    isRecording = !isRecording;
+    recordBtn.classList.toggle('active');
+    looper.setRecording(isRecording);
+    
+    if (isRecording) {
+        if (!looper.isLooping) {
+            looper.start();
+            playPauseBtn.textContent = 'pause';
+        }
+        statusSpan.textContent = 'recording...';
+    } else {
+        statusSpan.textContent = 'playing...';
+    }
+});
+
+// Play/Pause button
+playPauseBtn.addEventListener('click', () => {
+    if (!looper.isLooping) {
+        looper.start();
+        playPauseBtn.textContent = 'pause';
+        statusSpan.textContent = isRecording ? 'recording...' : 'playing...';
+    } else {
+        looper.stop();
+        playPauseBtn.textContent = 'play';
+        statusSpan.textContent = 'paused';
+        isRecording = false;
+        recordBtn.classList.remove('active');
+    }
+});
+
+// Clear button
+clearBtn.addEventListener('click', () => {
     looper.clearAllEvents();
-  }
+    statusSpan.textContent = looper.isLooping ? 'playing...' : 'cleared';
+    isRecording = false;
+    looper.setRecording(false);
+    recordBtn.classList.remove('active');
 });
 
 // dynamically update BPM
