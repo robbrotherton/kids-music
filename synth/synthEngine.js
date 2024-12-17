@@ -244,7 +244,6 @@ export class SynthEngine {
   stopAllOscillators() {
     this.voices.forEach(voice => voice.triggerRelease());
     this.activeVoices.clear();
-    this.resetEffects();
   }
 
   noteOn(freq, time = undefined) {
