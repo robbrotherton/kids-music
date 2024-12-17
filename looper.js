@@ -10,6 +10,7 @@ export class Looper {
     this.synthRef = synthRef;
     this.isLooping = false;
     this.isRecording = false;
+    this.isPaused = false;
 
     this.noteRecords = [];
     this.stepDots = [];
@@ -52,16 +53,20 @@ export class Looper {
   start() {
     if (this.isLooping) return;
     this.isLooping = true;
+    this.isPaused = false;
     this.currentMeasureStartTime = Tone.Transport.seconds;
     Tone.Transport.start();
   }
 
   stop() {
     this.isLooping = false;
-    Tone.Transport.pause(); // Changed from stop() to pause() to maintain position
-    this.updateStepHighlight(-1);
-
-    // Only stop active notes, don't clear the records
+    this.isPaused = true;
+    this.currentStep = 0;
+    Tone.Transport.stop();  // Changed from pause() to stop()
+    Tone.Transport.position = 0;  // Reset transport position
+    
+    this.updateStepHighlight(-1);  // Hide the step indicator
+    
     if (this.synthRef) {
       this.noteRecords.forEach(record => {
         record.playOffFn && record.playOffFn();
@@ -73,13 +78,21 @@ export class Looper {
   }
 
   updateStepHighlight(currentStep) {
+    // Show step indicator regardless of pause state
     this.stepDots.forEach((dot, index) => {
-      dot.classList.toggle('current', index === currentStep);
+      if (currentStep === -1) {
+        dot.classList.remove('current');  // Hide all indicators
+      } else {
+        dot.classList.toggle('current', index === currentStep);
+      }
     });
   }
 
   clearAllEvents() {
     this.noteRecords = [];
+    this.currentStep = 0;
+    Tone.Transport.position = 0;  // Reset transport position
+    this.updateStepHighlight(-1);  // Hide the step indicator
   }
 
   setRecording(state) {

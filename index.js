@@ -58,7 +58,7 @@ recordBtn.addEventListener('click', () => {
     if (isRecording) {
         if (!looper.isLooping) {
             looper.start();
-            playPauseBtn.textContent = 'pause';
+            playPauseBtn.classList.add('active');
         }
         statusSpan.textContent = 'recording...';
     } else {
@@ -70,11 +70,11 @@ recordBtn.addEventListener('click', () => {
 playPauseBtn.addEventListener('click', () => {
     if (!looper.isLooping) {
         looper.start();
-        playPauseBtn.textContent = 'pause';
+        playPauseBtn.classList.add('active');
         statusSpan.textContent = isRecording ? 'recording...' : 'playing...';
     } else {
         looper.stop();
-        playPauseBtn.textContent = 'play';
+        playPauseBtn.classList.remove('active');
         statusSpan.textContent = 'paused';
         isRecording = false;
         recordBtn.classList.remove('active');
@@ -83,11 +83,14 @@ playPauseBtn.addEventListener('click', () => {
 
 // Clear button
 clearBtn.addEventListener('click', () => {
+    looper.stop();
     looper.clearAllEvents();
-    statusSpan.textContent = looper.isLooping ? 'playing...' : 'cleared';
+    looper.updateStepHighlight(0);  // Reset to first step
+    statusSpan.textContent = 'cleared';
     isRecording = false;
     looper.setRecording(false);
     recordBtn.classList.remove('active');
+    playPauseBtn.classList.remove('active');
 });
 
 // dynamically update BPM

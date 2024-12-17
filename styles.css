@@ -119,6 +119,19 @@ h1 {
   color: white;
 }
 
+#play-pause-btn.active {
+  background: #4CAF50;  /* green color */
+  color: white;
+}
+
+#play-pause-btn:hover {
+  background: #555;
+}
+
+#play-pause-btn.active:hover {
+  background: #45a049;  /* slightly darker green */
+}
+
 #play-pause-btn:hover,
 #clear-btn:hover {
   background: #555;
@@ -126,6 +139,19 @@ h1 {
 
 #record-btn:hover {
   background: #ff5555;
+}
+
+#play-pause-btn {
+  font-size: 0.8em;
+  /* line-height: 1; */
+}
+
+#play-pause-btn::before {
+  content: "▶";  /* Play triangle */
+}
+
+#play-pause-btn.active::before {
+  content: "⏸";  /* Pause icon */
 }
 
 .looper-controls span {
