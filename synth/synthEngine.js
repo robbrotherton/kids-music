@@ -320,4 +320,12 @@ export class SynthEngine {
       voice.set({ portamento: time })
     );
   }
+
+  setFilterFrequency(freq) {
+    this.filter.frequency.setValueAtTime(freq, Tone.now());
+  }
+  
+  setFilterQ(q) {
+    this.filter.Q.setValueAtTime(q, Tone.now());
+  }
 }

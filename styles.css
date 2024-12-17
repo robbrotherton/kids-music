@@ -213,3 +213,208 @@ h1 {
 .waveform-label input[type="radio"]:checked+.waveform-icon {
   border: 2px solid rgb(78, 78, 78);
 }
+
+.controls-container {
+  width: 80vw;
+  display: flex;
+  flex-wrap: wrap;
+  /* gap: 15px; */
+  /* padding: 15px; */
+  background: #2a2a2a;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.control-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 15px;
+  padding: 20px;
+  border-radius: 8px;
+  position: relative;
+}
+
+.control-group::before {
+  content: attr(data-label);
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  background: inherit;
+  padding: 0 5px;
+  font-size: 0.8em;
+  color: #888;
+}
+
+/* Main controls span full width */
+.main-controls {
+  flex: 1 1 250px; /* narrower width for column layout */
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  background: #333;
+  padding: 15px;
+  min-width: 200px;
+}
+
+/* Wave selector and performance controls fill width */
+.wave-selector,
+.performance-controls {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  padding: 10px;
+  gap: 10px;
+}
+
+/* Specific 2x3 grid for modulation */
+.modulation-controls {
+  flex: 1 1 400px; /* wider to accommodate 2 columns */
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* force 2 columns */
+  grid-template-rows: repeat(3, 1fr); /* force 3 rows */
+  gap: 15px;
+  padding: 15px;
+  background: #2d2d2d;
+}
+
+/* Keep other control groups flexible */
+.time-effects-controls,
+.character-controls {
+  flex: 1 1 300px;
+  /* ...existing properties... */
+}
+
+/* Ensure knobs in main controls are centered */
+.main-controls .knob-container {
+  align-self: center;
+  width: 100%;
+}
+
+/* Specific layouts for each section */
+.modulation-controls {
+  flex: 1 1 calc(50% - 15px); /* 50% width minus gap */
+  min-width: 300px; /* Ensure minimum readable width */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  padding: 15px;
+  background: #2d2d2d;
+}
+
+.time-effects-controls {
+  flex: 1 1 calc(50% - 15px); /* 50% width minus gap */
+  min-width: 300px; /* Ensure minimum readable width */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  padding: 15px;
+  background: #282828;
+}
+
+.character-controls {
+  flex: 1 1 calc(50% - 15px); /* 50% width minus gap */
+  min-width: 300px; /* Ensure minimum readable width */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  padding: 15px;
+  background: #252525;
+}
+
+.wave-selector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 8px;
+  background: #383838;
+  border-radius: 6px;
+}
+
+.performance-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px;
+  background: #383838;
+  border-radius: 6px;
+  margin: 0;
+}
+
+/* Ensure knob containers don't grow too large */
+.knob-container {
+  min-width: 60px;
+  max-width: 100px;
+  justify-self: center;
+}
+
+/* Update toggle styles to match knob aesthetic */
+.performance-controls label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #ddd;
+  font-size: 0.8em;
+}
+
+.performance-controls input[type="checkbox"] {
+  accent-color: #666;
+}
+
+.toggles-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 15px;
+}
+
+/* Add section labels */
+.control-group::before {
+  content: attr(class);
+  position: absolute;
+  top: -8px;
+  left: 10px;
+  font-size: 0.75em;
+  color: #999;
+  background: inherit;
+  padding: 0 5px;
+}
+
+.knob-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.knob {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: #444;
+  position: relative;
+  cursor: pointer;
+  border: 2px solid #555;
+}
+
+.knob::before {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 15px;
+  background: #fff;
+  left: 50%;
+  top: 5px;
+  transform-origin: bottom;
+  transform: translateX(-50%);
+}
+
+.knob-label {
+  font-size: 11px;
+  text-align: center;
+  color: #ddd;
+}
+
+.knob-value {
+  font-size: 9px;
+  color: #999;
+}

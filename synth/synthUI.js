@@ -1,5 +1,5 @@
 import { buildChordIndices } from './chordLogic.js';
-import { createFilterControls } from './filterControls.js';
+import { Knob } from '../utils.js';
 
 /**
  * synthUI: builds DOM elements (keys, wave/volume controls),
@@ -156,30 +156,130 @@ export function createSynthUI(container, synthEngine, looperRef) {
   });
   container.appendChild(waveSelectContainer);
 
-  // volume slider
-  const volSlider = document.createElement('input');
-  volSlider.type = 'range';
-  volSlider.min = 0;
-  volSlider.max = 1;
-  volSlider.step = 0.1;
-  volSlider.value = 0.5;
-  volSlider.addEventListener('input', e => synthEngine.setVolume(parseFloat(e.target.value)));
-  container.appendChild(volSlider);
+  // Replace the old controls with new knob-based controls
+  const controlsContainer = document.createElement('div');
+  controlsContainer.className = 'controls-container';
 
-  // chord mode toggle
+  // Basic controls
+  const volumeKnob = new Knob({
+    min: 0, max: 1, value: 0.5,
+    label: 'Volume',
+    onChange: (value) => synthEngine.setVolume(value)
+  });
+
+  const filterKnob = new Knob({
+    min: 80, max: 12000, value: 12000,
+    label: 'Filter',
+    onChange: (value) => synthEngine.setCutoffFrequency(value)
+  });
+
+  const resonanceKnob = new Knob({
+    min: 0, max: 20, value: 1,
+    label: 'Resonance',
+    onChange: (value) => synthEngine.setFilterQ(value)
+  });
+
+  // Add Effect Knobs
+  const tremoloRateKnob = new Knob({
+    min: 0.1, max: 10, value: 4,
+    label: 'Trem Rate',
+    onChange: (value) => synthEngine.setTremoloRate(value)
+  });
+
+  const tremoloDepthKnob = new Knob({
+    min: 0, max: 1, value: 0,
+    label: 'Trem Depth',
+    onChange: (value) => synthEngine.setTremoloDepth(value)
+  });
+
+  const vibratoRateKnob = new Knob({
+    min: 0.1, max: 10, value: 5,
+    label: 'Vib Rate',
+    onChange: (value) => synthEngine.setVibratoRate(value)
+  });
+
+  const vibratoDepthKnob = new Knob({
+    min: 0, max: 0.5, value: 0,
+    label: 'Vib Depth',
+    onChange: (value) => synthEngine.setVibratoDepth(value)
+  });
+
+  const delayTimeKnob = new Knob({
+    min: 0.05, max: 1.0, value: 0.25,
+    label: 'Delay Time',
+    onChange: (value) => synthEngine.setDelayTime(value)
+  });
+
+  const delayFeedbackKnob = new Knob({
+    min: 0, max: 0.9, value: 0.2,
+    label: 'Feedback',
+    onChange: (value) => synthEngine.setDelayFeedback(value)
+  });
+
+  const delayMixKnob = new Knob({
+    min: 0, max: 1, value: 0,
+    label: 'Delay Mix',
+    onChange: (value) => synthEngine.setDelayWet(value)
+  });
+
+  const reverbSizeKnob = new Knob({
+    min: 0.1, max: 10, value: 2.5,
+    label: 'Verb Size',
+    onChange: (value) => synthEngine.setReverbDecay(value)
+  });
+
+  const reverbMixKnob = new Knob({
+    min: 0, max: 1, value: 0,
+    label: 'Verb Mix',
+    onChange: (value) => synthEngine.setReverbWet(value)
+  });
+
+  const wahRateKnob = new Knob({
+    min: 0.1, max: 10, value: 4,
+    label: 'Wah Rate',
+    onChange: (value) => synthEngine.setWahRate(value)
+  });
+
+  const wahDepthKnob = new Knob({
+    min: 0, max: 1, value: 0,
+    label: 'Wah Depth',
+    onChange: (value) => synthEngine.setWahDepth(value)
+  });
+
+  const distortionKnob = new Knob({
+    min: 0, max: 1, value: 0,
+    label: 'Distortion',
+    onChange: (value) => synthEngine.setDistortionAmount(value)
+  });
+
+  // Create separate containers for different control groups
+  const mainControls = document.createElement('div');
+  mainControls.className = 'control-group main-controls';
+  mainControls.setAttribute('data-label', 'Main Controls');
+  
+  const modulationControls = document.createElement('div');
+  modulationControls.className = 'control-group modulation-controls';
+  modulationControls.setAttribute('data-label', 'Modulation');
+  
+  const timeEffectsControls = document.createElement('div');
+  timeEffectsControls.className = 'control-group time-effects-controls';
+  timeEffectsControls.setAttribute('data-label', 'Time Effects');
+  
+  const characterControls = document.createElement('div');
+  characterControls.className = 'control-group character-controls';
+  characterControls.setAttribute('data-label', 'Character');
+
+  // Create toggle controls FIRST
   const chordToggleLabel = document.createElement('label');
   chordToggleLabel.textContent = ' chord mode ';
   const chordToggle = document.createElement('input');
   chordToggle.type = 'checkbox';
-  chordToggle.checked = synthEngine.chordMode; // initialize based on synthEngine state
+  chordToggle.checked = synthEngine.chordMode;
   chordToggle.addEventListener('change', () => {
     synthEngine.chordMode = chordToggle.checked;
-    console.log('Chord mode toggled:', synthEngine.chordMode); // Debugging log
   });
   chordToggleLabel.appendChild(chordToggle);
-  container.appendChild(chordToggleLabel);
 
-  // portamento toggle
   const portamentoLabel = document.createElement('label');
   portamentoLabel.textContent = ' glide ';
   const portamentoToggle = document.createElement('input');
@@ -189,8 +289,48 @@ export function createSynthUI(container, synthEngine, looperRef) {
     synthEngine.setPortamento(portamentoToggle.checked ? 0.1 : 0);
   });
   portamentoLabel.appendChild(portamentoToggle);
-  container.appendChild(portamentoLabel);
 
-  // create and append filter controls
-  createFilterControls(container, synthEngine);
+  // Performance controls
+  const performanceControls = document.createElement('div');
+  performanceControls.className = 'performance-controls';
+  performanceControls.appendChild(chordToggleLabel);
+  performanceControls.appendChild(portamentoLabel);
+
+  // Core synth controls section
+  waveSelectContainer.className = 'wave-selector';
+  mainControls.appendChild(waveSelectContainer);
+  mainControls.appendChild(performanceControls);
+  [volumeKnob, filterKnob, resonanceKnob].forEach(knob => 
+    mainControls.appendChild(knob.container));
+
+  // Modulation controls section
+  [
+    vibratoRateKnob,
+    vibratoDepthKnob,
+    tremoloRateKnob,
+    tremoloDepthKnob,
+    wahRateKnob,
+    wahDepthKnob
+  ].forEach(knob => modulationControls.appendChild(knob.container));
+  
+  // Time-based effects section
+  [
+    delayTimeKnob,
+    delayFeedbackKnob,
+    delayMixKnob,
+    reverbSizeKnob,
+    reverbMixKnob
+  ].forEach(knob => timeEffectsControls.appendChild(knob.container));
+  
+  // Character effects section
+  [distortionKnob].forEach(knob => 
+    characterControls.appendChild(knob.container));
+
+  // Add all control groups to main container
+  controlsContainer.appendChild(mainControls);
+  controlsContainer.appendChild(modulationControls);
+  controlsContainer.appendChild(timeEffectsControls);
+  controlsContainer.appendChild(characterControls);
+
+  container.appendChild(controlsContainer);
 }
