@@ -59,6 +59,13 @@ export class SynthEngine {
       wet: 0         // Start bypassed
     });
 
+    // Add distortion effect with a compensation gain
+    this.distortionCompensation = new Tone.Gain(1);
+    this.distortion = new Tone.Distortion({
+      distortion: 0,  // start clean
+      wet: 0         // start bypassed
+    });
+
     // Wait only for reverb to generate its impulse response
     await this.reverb.generate();
 
@@ -87,6 +94,8 @@ export class SynthEngine {
       this.vibrato,
       this.wahFilter,    // Add wah before tremolo
       this.tremoloGain, 
+      this.distortion,
+      this.distortionCompensation,  // Add compensation after distortion
       this.delay,
       this.reverb,
       this.filter
@@ -108,6 +117,8 @@ export class SynthEngine {
     this.tremoloLFO.max = 1;
     this.wahLFO.min = 800;
     this.wahLFO.max = 800;
+    this.distortion.wet.value = 0;
+    this.distortion.distortion = 0;
   }
 
   cleanup() {
@@ -122,6 +133,8 @@ export class SynthEngine {
     this.outputGain.disconnect();
     this.wahLFO.stop();
     this.wahFilter.disconnect();
+    this.distortion.disconnect();
+    this.distortionCompensation.disconnect();
   }
 
   setWaveform(wave) {
@@ -248,5 +261,19 @@ export class SynthEngine {
     this.synth.set({
       envelope: { release: time }
     });
+  }
+
+  setDistortionAmount(amount) {
+    const now = Tone.now();
+    // amount: 0-1
+    this.distortion.distortion = amount;
+    this.distortion.wet.linearRampToValueAtTime(amount === 0 ? 0 : 1, now + 0.1);
+    
+    // Compensate for volume increase
+    // As distortion increases, we decrease the compensation gain
+    // These values are tuned by ear - adjust if needed
+    const compensationDb = -12 * amount;  // up to -12dB reduction for full distortion
+    const compensationGain = Tone.dbToGain(compensationDb);
+    this.distortionCompensation.gain.linearRampToValueAtTime(compensationGain, now + 0.1);
   }
 }

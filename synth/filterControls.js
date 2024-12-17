@@ -244,4 +244,21 @@ export function createFilterControls(container, synthEngine) {
 
   releaseLabel.appendChild(releaseSlider);
   container.appendChild(releaseLabel);
+
+  // Distortion Amount Control
+  const distortionLabel = document.createElement('label');
+  distortionLabel.textContent = ' distortion ';
+  const distortionSlider = document.createElement('input');
+  distortionSlider.type = 'range';
+  distortionSlider.min = 0;
+  distortionSlider.max = 1;
+  distortionSlider.value = 0;  // start clean
+  distortionSlider.step = 0.01;
+
+  distortionSlider.addEventListener('input', e => {
+    synthEngine.setDistortionAmount(parseFloat(e.target.value));
+  });
+
+  distortionLabel.appendChild(distortionSlider);
+  container.appendChild(distortionLabel);
 }
