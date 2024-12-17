@@ -259,6 +259,40 @@ h1 {
   margin-top: 10px;
 }
 
+/* New sub-group for envelope controls */
+.envelope-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 15px;
+  background: #3a3a3a;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+/* Ensure envelope knobs are properly sized */
+.envelope-group .knob-container {
+  min-width: 50px;
+  max-width: 80px;
+}
+
+/* New sub-group for filter envelope controls */
+.filter-envelope-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 15px;
+  background: #3a3a3a;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+/* Ensure filter envelope knobs are properly sized */
+.filter-envelope-group .knob-container {
+  min-width: 50px;
+  max-width: 80px;
+}
+
 /* Modulation section styles */
 .modulation-controls {
   background: #2d2d2d;

@@ -160,24 +160,34 @@ export function createSynthUI(container, synthEngine, looperRef) {
   const controlsContainer = document.createElement('div');
   controlsContainer.className = 'controls-container';
 
-  // Basic controls
+  // Basic controls with initialization
   const volumeKnob = new Knob({
     min: 0, max: 1, value: 0.5,
     label: 'Volume',
     onChange: (value) => synthEngine.setVolume(value)
   });
+  synthEngine.setVolume(0.5); // Initialize
 
   const filterKnob = new Knob({
     min: 80, max: 12000, value: 12000,
     label: 'Filter',
     onChange: (value) => synthEngine.setCutoffFrequency(value)
   });
+  synthEngine.setCutoffFrequency(12000); // Initialize
 
   const resonanceKnob = new Knob({
     min: 0, max: 20, value: 1,
     label: 'Resonance',
     onChange: (value) => synthEngine.setFilterQ(value)
   });
+  synthEngine.setFilterQ(1); // Initialize
+
+  const distortionKnob = new Knob({
+    min: 0, max: 1, value: 0,
+    label: 'Distortion',
+    onChange: (value) => synthEngine.setDistortionAmount(value)
+  });
+  synthEngine.setDistortionAmount(0); // Initialize
 
   // Add Effect Knobs
   const tremoloRateKnob = new Knob({
@@ -197,6 +207,8 @@ export function createSynthUI(container, synthEngine, looperRef) {
     label: 'Vib Rate',
     onChange: (value) => synthEngine.setVibratoRate(value)
   });
+  synthEngine.setVibratoRate(5);
+  synthEngine.setVibratoDepth(0);
 
   const vibratoDepthKnob = new Knob({
     min: 0, max: 0.5, value: 0,
@@ -246,11 +258,70 @@ export function createSynthUI(container, synthEngine, looperRef) {
     onChange: (value) => synthEngine.setWahDepth(value)
   });
 
-  const distortionKnob = new Knob({
-    min: 0, max: 1, value: 0,
-    label: 'Distortion',
-    onChange: (value) => synthEngine.setDistortionAmount(value)
+  // Add ADSR Knobs
+  const attackKnob = new Knob({
+    min: 0.01, max: 2.0, value: 0.01,
+    label: 'Attack',
+    onChange: (value) => synthEngine.setAttack(value)
   });
+  synthEngine.setAttack(0.01);
+
+  const decayKnob = new Knob({
+    min: 0.01, max: 2.0, value: 0.1,
+    label: 'Decay',
+    onChange: (value) => synthEngine.setDecay(value)
+  });
+  synthEngine.setDecay(0.1);
+
+  const sustainKnob = new Knob({
+    min: 0, max: 1.0, value: 0.7,
+    label: 'Sustain',
+    onChange: (value) => synthEngine.setSustain(value)
+  });
+  synthEngine.setSustain(0.7);
+
+  const releaseKnob = new Knob({
+    min: 0.01, max: 3.0, value: 0.1,
+    label: 'Release',
+    onChange: (value) => synthEngine.setRelease(value)
+  });
+  synthEngine.setRelease(0.1);
+
+  // Add Filter Envelope Knobs
+  const filterAttackKnob = new Knob({
+    min: 0.01, max: 2.0, value: 0.01,
+    label: 'F.Attack',
+    onChange: (value) => synthEngine.setFilterAttack(value)
+  });
+  synthEngine.setFilterAttack(0.01);
+
+  const filterDecayKnob = new Knob({
+    min: 0.01, max: 2.0, value: 0.1,
+    label: 'F.Decay',
+    onChange: (value) => synthEngine.setFilterDecay(value)
+  });
+  synthEngine.setFilterDecay(0.1);
+
+  const filterSustainKnob = new Knob({
+    min: 0, max: 1.0, value: 1.0,
+    label: 'F.Sustain',
+    onChange: (value) => synthEngine.setFilterSustain(value)
+  });
+  synthEngine.setFilterSustain(1.0);
+
+  const filterReleaseKnob = new Knob({
+    min: 0.01, max: 3.0, value: 0.1,
+    label: 'F.Release',
+    onChange: (value) => synthEngine.setFilterRelease(value)
+  });
+  synthEngine.setFilterRelease(0.1);
+
+  // const distortionKnob = new Knob({
+  //   min: 0, max: 1, value: 0,
+  //   label: 'Distortion',
+  //   onChange: (value) => synthEngine.setDistortionAmount(value)
+  // });
+  // synthEngine.setDistortionAmount(0); // Initialize
 
   // Create separate containers for different control groups
   const mainControls = document.createElement('div');
@@ -300,6 +371,22 @@ export function createSynthUI(container, synthEngine, looperRef) {
     coreKnobsGroup.appendChild(knob.container));
   
   mainControls.appendChild(coreKnobsGroup);
+
+  // Create sub-group for envelope knobs
+  const envelopeGroup = document.createElement('div');
+  envelopeGroup.className = 'envelope-group';
+  [attackKnob, decayKnob, sustainKnob, releaseKnob].forEach(knob => 
+    envelopeGroup.appendChild(knob.container));
+  
+  mainControls.appendChild(envelopeGroup);
+
+  // Create sub-group for filter envelope knobs
+  const filterEnvelopeGroup = document.createElement('div');
+  filterEnvelopeGroup.className = 'filter-envelope-group';
+  [filterAttackKnob, filterDecayKnob, filterSustainKnob, filterReleaseKnob].forEach(knob => 
+    filterEnvelopeGroup.appendChild(knob.container));
+  
+  mainControls.appendChild(filterEnvelopeGroup);
   mainControls.appendChild(glideKnob.container);
 
   // Modulation controls section

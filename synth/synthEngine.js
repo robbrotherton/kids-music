@@ -6,8 +6,22 @@ export class SynthEngine {
       envelope: {
         attack: 0.01,
         decay: 0.1,
-        sustain: 0.5,
+        sustain: 0.7,
         release: 0.1
+      },
+      filterEnvelope: {
+        attack: 0.01,
+        decay: 0.2,
+        sustain: 0.5,
+        release: 0.2,
+        baseFrequency: 200,    // Start from a lower frequency
+        octaves: 7,            // Sweep through more octaves
+        exponent: 2            // More dramatic exponential sweep
+      },
+      filter: {
+        Q: 6,                  // More resonance
+        rolloff: -24,          // Steeper filter slope
+        type: 'lowpass'
       },
       volume: -6
     }));
@@ -43,14 +57,14 @@ export class SynthEngine {
     this.filter.connect(this.compressor);
     this.compressor.connect(this.outputGain);
 
-    // Create a gain node for amplitude modulation with no effect
-    this.tremoloGain = new Tone.Gain(1);
-    this.tremoloLFO = new Tone.LFO({
+    // Replace our custom tremolo with Tone.js Tremolo
+    this.tremolo = new Tone.Tremolo({
       frequency: 4,
-      min: 1,        // Start with no effect (full volume)
-      max: 1,        // Start with no effect (full volume)
-      type: 'sine'
-    });
+      depth: 0,
+      spread: 0,
+      type: 'sine',
+      wet: 0
+    }).start();
 
     this.vibrato = new Tone.Vibrato({
       frequency: 5,
@@ -79,9 +93,6 @@ export class SynthEngine {
     // Wait only for reverb to generate its impulse response
     await this.reverb.generate();
 
-    this.tremoloLFO.connect(this.tremoloGain.gain);
-    this.tremoloLFO.start();
-
     // Update wah filter settings for more pronounced effect
     this.wahFilter = new Tone.Filter({
       type: "bandpass",
@@ -98,14 +109,14 @@ export class SynthEngine {
 
     this.wahLFO.start();
 
-    // Chain everything once and leave it connected
+    // Reorder the chain to ensure tremolo is affecting amplitude properly
     this.voices.forEach(voice => voice.disconnect());
     this.voices.forEach(voice => voice.chain(
+      this.tremolo,      // Use new tremolo effect
       this.vibrato,
-      this.wahFilter,    // Add wah before tremolo
-      this.tremoloGain, 
+      this.wahFilter,
       this.distortion,
-      this.distortionCompensation,  // Add compensation after distortion
+      this.distortionCompensation,
       this.delay,
       this.reverb,
       this.filter
@@ -122,9 +133,8 @@ export class SynthEngine {
     this.delay.wet.value = 0;
     this.reverb.wet.value = 0;
     this.vibrato.wet.value = 0;
-    this.tremoloGain.gain.value = 1;
-    this.tremoloLFO.min = 1;
-    this.tremoloLFO.max = 1;
+    this.tremolo.wet.value = 0;
+    this.tremolo.depth.value = 0;
     this.wahLFO.min = 800;
     this.wahLFO.max = 800;
     this.distortion.wet.value = 0;
@@ -133,8 +143,7 @@ export class SynthEngine {
 
   cleanup() {
     this.voices.forEach(voice => voice.disconnect());
-    this.tremoloLFO.stop();
-    this.tremoloGain.disconnect();
+    this.tremolo.dispose();
     this.delay.disconnect();
     this.reverb.disconnect();
     this.filter.disconnect();
@@ -183,21 +192,12 @@ export class SynthEngine {
   }
 
   setTremoloRate(rate) {
-    this.tremoloLFO.frequency.linearRampToValueAtTime(rate, Tone.now() + 0.1);
+    this.tremolo.frequency.value = rate;
   }
 
   setTremoloDepth(depth) {
-    const now = Tone.now();
-    if (depth === 0) {
-      this.tremoloLFO.min = 1;
-      this.tremoloLFO.max = 1;
-      this.tremoloGain.gain.linearRampToValueAtTime(1, now + 0.1);
-    } else {
-      const min = Math.max(0, 1 - depth);
-      this.tremoloLFO.min = min;
-      this.tremoloLFO.max = 1;
-      this.tremoloGain.gain.linearRampToValueAtTime(min, now + 0.1);
-    }
+    this.tremolo.depth.value = depth;
+    this.tremolo.wet.value = depth === 0 ? 0 : 1;
   }
 
   setVibratoRate(rate) {
@@ -206,7 +206,8 @@ export class SynthEngine {
 
   setVibratoDepth(depth) {
     const now = Tone.now();
-    this.vibrato.depth.linearRampToValueAtTime(depth, now + 0.1);
+    // Double the depth for more dramatic effect
+    this.vibrato.depth.linearRampToValueAtTime(depth * 2, now + 0.1);
     this.vibrato.wet.linearRampToValueAtTime(depth === 0 ? 0 : 1, now + 0.1);
   }
 
@@ -273,19 +274,17 @@ export class SynthEngine {
   setWahDepth(depth) {
     const now = Tone.now();
     if (depth === 0) {
-      // No wah - fix filter frequency
       this.wahLFO.min = 800;
       this.wahLFO.max = 800;
     } else {
-      // Map depth to frequency range for more dramatic sweep
-      // At full depth: 200Hz to 3000Hz
-      const minFreq = 500;
-      const maxFreq = minFreq + (2500 * depth);  // max 3000Hz at full depth
+      // Much wider frequency range for more dramatic wah
+      const minFreq = 200;
+      const maxFreq = minFreq + (5000 * depth);  // max 5200Hz at full depth
       this.wahLFO.min = minFreq;
       this.wahLFO.max = maxFreq;
       
-      // Optionally adjust Q based on depth for even more character
-      this.wahFilter.Q.value = 2 + (depth * 8); // Q ranges from 2 to 10
+      // More resonance for more pronounced wah
+      this.wahFilter.Q.value = 5 + (depth * 15); // Q ranges from 5 to 20
     }
   }
 
@@ -295,22 +294,54 @@ export class SynthEngine {
     );
   }
 
+  setDecay(time) {
+    this.voices.forEach(voice => 
+      voice.set({ envelope: { decay: time } })
+    );
+  }
+
+  setSustain(level) {
+    this.voices.forEach(voice => 
+      voice.set({ envelope: { sustain: level } })
+    );
+  }
+
   setRelease(time) {
     this.voices.forEach(voice => 
       voice.set({ envelope: { release: time } })
     );
   }
 
+  setFilterAttack(time) {
+    this.voices.forEach(voice => 
+      voice.set({ filterEnvelope: { attack: time } })
+    );
+  }
+
+  setFilterDecay(time) {
+    this.voices.forEach(voice => 
+      voice.set({ filterEnvelope: { decay: time } })
+    );
+  }
+
+  setFilterSustain(level) {
+    this.voices.forEach(voice => 
+      voice.set({ filterEnvelope: { sustain: level } })
+    );
+  }
+
+  setFilterRelease(time) {
+    this.voices.forEach(voice => 
+      voice.set({ filterEnvelope: { release: time } })
+    );
+  }
+
   setDistortionAmount(amount) {
     const now = Tone.now();
-    // amount: 0-1
-    this.distortion.distortion = amount;
+    this.distortion.distortion = amount * 2; // Double the distortion effect
     this.distortion.wet.linearRampToValueAtTime(amount === 0 ? 0 : 1, now + 0.1);
     
-    // Compensate for volume increase
-    // As distortion increases, we decrease the compensation gain
-    // These values are tuned by ear - adjust if needed
-    const compensationDb = -12 * amount;  // up to -12dB reduction for full distortion
+    const compensationDb = -6 * amount;  // Less compensation for more dramatic effect
     const compensationGain = Tone.dbToGain(compensationDb);
     this.distortionCompensation.gain.linearRampToValueAtTime(compensationGain, now + 0.1);
   }
