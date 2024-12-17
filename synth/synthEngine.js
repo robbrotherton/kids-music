@@ -2,6 +2,12 @@ export class SynthEngine {
   constructor() {
     this.synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'sine' },
+      envelope: {
+        attack: 0.01,
+        decay: 0.1,
+        sustain: 0.5,
+        release: 0.1
+      },
       volume: -6
     });
 
@@ -59,10 +65,27 @@ export class SynthEngine {
     this.tremoloLFO.connect(this.tremoloGain.gain);
     this.tremoloLFO.start();
 
+    // Update wah filter settings for more pronounced effect
+    this.wahFilter = new Tone.Filter({
+      type: "bandpass",
+      frequency: 800,   // center starting frequency
+      Q: 1             // increased resonance for more pronounced sweep
+    });
+
+    this.wahLFO = new Tone.LFO({
+      frequency: 4,
+      min: 800,    // higher starting frequency
+      max: 800,    // start with no sweep (same as min)
+      type: 'sine'
+    }).connect(this.wahFilter.frequency);
+
+    this.wahLFO.start();
+
     // Chain everything once and leave it connected
     this.synth.disconnect();
     this.synth.chain(
-      this.vibrato, 
+      this.vibrato,
+      this.wahFilter,    // Add wah before tremolo
       this.tremoloGain, 
       this.delay,
       this.reverb,
@@ -83,6 +106,8 @@ export class SynthEngine {
     this.tremoloGain.gain.value = 1;
     this.tremoloLFO.min = 1;
     this.tremoloLFO.max = 1;
+    this.wahLFO.min = 800;
+    this.wahLFO.max = 800;
   }
 
   cleanup() {
@@ -95,6 +120,8 @@ export class SynthEngine {
     this.filter.disconnect();
     this.compressor.disconnect();
     this.outputGain.disconnect();
+    this.wahLFO.stop();
+    this.wahFilter.disconnect();
   }
 
   setWaveform(wave) {
@@ -186,5 +213,40 @@ export class SynthEngine {
 
   noteOff(freq) {
     this.synth.triggerRelease(freq);
+  }
+
+  setWahRate(rate) {
+    this.wahLFO.frequency.linearRampToValueAtTime(rate, Tone.now() + 0.1);
+  }
+
+  setWahDepth(depth) {
+    const now = Tone.now();
+    if (depth === 0) {
+      // No wah - fix filter frequency
+      this.wahLFO.min = 800;
+      this.wahLFO.max = 800;
+    } else {
+      // Map depth to frequency range for more dramatic sweep
+      // At full depth: 200Hz to 3000Hz
+      const minFreq = 500;
+      const maxFreq = minFreq + (2500 * depth);  // max 3000Hz at full depth
+      this.wahLFO.min = minFreq;
+      this.wahLFO.max = maxFreq;
+      
+      // Optionally adjust Q based on depth for even more character
+      this.wahFilter.Q.value = 2 + (depth * 8); // Q ranges from 2 to 10
+    }
+  }
+
+  setAttack(time) {
+    this.synth.set({
+      envelope: { attack: time }
+    });
+  }
+
+  setRelease(time) {
+    this.synth.set({
+      envelope: { release: time }
+    });
   }
 }

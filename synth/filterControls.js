@@ -176,4 +176,72 @@ export function createFilterControls(container, synthEngine) {
 
   reverbWetLabel.appendChild(reverbWetSlider);
   container.appendChild(reverbWetLabel);
+
+  // Wah Rate Control
+  const wahRateLabel = document.createElement('label');
+  wahRateLabel.textContent = ' wah rate ';
+  const wahRateSlider = document.createElement('input');
+  wahRateSlider.type = 'range';
+  wahRateSlider.min = 0.1;
+  wahRateSlider.max = 10;
+  wahRateSlider.value = 4;
+  wahRateSlider.step = 0.1;
+
+  wahRateSlider.addEventListener('input', e => {
+    synthEngine.setWahRate(parseFloat(e.target.value));
+  });
+
+  wahRateLabel.appendChild(wahRateSlider);
+  container.appendChild(wahRateLabel);
+
+  // Wah Depth Control
+  const wahDepthLabel = document.createElement('label');
+  wahDepthLabel.textContent = ' wah depth ';
+  const wahDepthSlider = document.createElement('input');
+  wahDepthSlider.type = 'range';
+  wahDepthSlider.min = 0;
+  wahDepthSlider.max = 1;
+  wahDepthSlider.value = 0;  // start with no effect
+  wahDepthSlider.step = 0.01;
+
+  wahDepthSlider.addEventListener('input', e => {
+    synthEngine.setWahDepth(parseFloat(e.target.value));
+  });
+
+  wahDepthLabel.appendChild(wahDepthSlider);
+  container.appendChild(wahDepthLabel);
+
+  // Attack Time Control
+  const attackLabel = document.createElement('label');
+  attackLabel.textContent = ' attack ';
+  const attackSlider = document.createElement('input');
+  attackSlider.type = 'range';
+  attackSlider.min = 0.001;  // 1ms
+  attackSlider.max = 2.0;    // 2 seconds
+  attackSlider.value = 0.01; // default 10ms
+  attackSlider.step = 0.001;
+
+  attackSlider.addEventListener('input', e => {
+    synthEngine.setAttack(parseFloat(e.target.value));
+  });
+
+  attackLabel.appendChild(attackSlider);
+  container.appendChild(attackLabel);
+
+  // Release Time Control
+  const releaseLabel = document.createElement('label');
+  releaseLabel.textContent = ' release ';
+  const releaseSlider = document.createElement('input');
+  releaseSlider.type = 'range';
+  releaseSlider.min = 0.001;  // 1ms
+  releaseSlider.max = 5.0;    // 5 seconds
+  releaseSlider.value = 0.1;  // default 100ms
+  releaseSlider.step = 0.001;
+
+  releaseSlider.addEventListener('input', e => {
+    synthEngine.setRelease(parseFloat(e.target.value));
+  });
+
+  releaseLabel.appendChild(releaseSlider);
+  container.appendChild(releaseLabel);
 }
