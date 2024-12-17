@@ -1,6 +1,7 @@
 export class SynthEngine {
   constructor() {
-    this.synth = new Tone.PolySynth(Tone.Synth, {
+    // Create multiple MonoSynths for polyphony
+    this.voices = Array(3).fill().map(() => new Tone.MonoSynth({
       oscillator: { type: 'sine' },
       envelope: {
         attack: 0.01,
@@ -9,20 +10,22 @@ export class SynthEngine {
         release: 0.1
       },
       volume: -6
-    });
+    }));
 
     // Update filter settings for more dramatic sweep
     this.filter = new Tone.Filter({
       type: "lowpass",
       frequency: 20000,
-      Q: 8,          // Increased resonance for that squelchy sound
-      rolloff: -24   // Steeper filter slope for more dramatic effect
+      Q: 8,
+      rolloff: -24
     }).toDestination();
     
-    this.synth.connect(this.filter);
+    // Connect all voices to the filter
+    this.voices.forEach(voice => voice.connect(this.filter));
 
     this.chordMode = true;
     this.looperRef = null;
+    this.activeVoices = new Map(); // Track which voice is playing which note
   }
 
   async initialize() {
@@ -96,8 +99,8 @@ export class SynthEngine {
     this.wahLFO.start();
 
     // Chain everything once and leave it connected
-    this.synth.disconnect();
-    this.synth.chain(
+    this.voices.forEach(voice => voice.disconnect());
+    this.voices.forEach(voice => voice.chain(
       this.vibrato,
       this.wahFilter,    // Add wah before tremolo
       this.tremoloGain, 
@@ -106,7 +109,7 @@ export class SynthEngine {
       this.delay,
       this.reverb,
       this.filter
-    );
+    ));
 
     // Make sure all effects start clean
     this.resetEffects();
@@ -129,9 +132,8 @@ export class SynthEngine {
   }
 
   cleanup() {
-    // Proper cleanup of audio nodes
+    this.voices.forEach(voice => voice.disconnect());
     this.tremoloLFO.stop();
-    this.synth.disconnect();
     this.tremoloGain.disconnect();
     this.delay.disconnect();
     this.reverb.disconnect();
@@ -145,12 +147,16 @@ export class SynthEngine {
   }
 
   setWaveform(wave) {
-    this.synth.set({ oscillator: { type: wave } });
+    this.voices.forEach(voice => 
+      voice.set({ oscillator: { type: wave } })
+    );
   }
 
   setVolume(vol) {
     const dbValue = Tone.gainToDb(vol);
-    this.synth.volume.linearRampToValueAtTime(dbValue, Tone.now() + 0.1);
+    this.voices.forEach(voice => 
+      voice.volume.linearRampToValueAtTime(dbValue, Tone.now() + 0.1)
+    );
   }
 
   setCutoffFrequency(freq) {
@@ -236,17 +242,29 @@ export class SynthEngine {
   }
 
   stopAllOscillators() {
-    this.synth.releaseAll();
-    // Optional: reset effects when stopping all sound
+    this.voices.forEach(voice => voice.triggerRelease());
+    this.activeVoices.clear();
     this.resetEffects();
   }
 
   noteOn(freq, time = undefined) {
-    this.synth.triggerAttack(freq, time);
+    // Find first available voice
+    const voice = this.voices.find(v => !this.activeVoices.has(v));
+    if (voice) {
+      voice.triggerAttack(freq, time);
+      this.activeVoices.set(voice, freq);
+    }
   }
 
   noteOff(freq, time = undefined) {
-    this.synth.triggerRelease(freq, time);
+    // Find and release the voice playing this frequency
+    for (const [voice, voiceFreq] of this.activeVoices) {
+      if (voiceFreq === freq) {
+        voice.triggerRelease(time);
+        this.activeVoices.delete(voice);
+        break;
+      }
+    }
   }
 
   setWahRate(rate) {
@@ -273,15 +291,15 @@ export class SynthEngine {
   }
 
   setAttack(time) {
-    this.synth.set({
-      envelope: { attack: time }
-    });
+    this.voices.forEach(voice => 
+      voice.set({ envelope: { attack: time } })
+    );
   }
 
   setRelease(time) {
-    this.synth.set({
-      envelope: { release: time }
-    });
+    this.voices.forEach(voice => 
+      voice.set({ envelope: { release: time } })
+    );
   }
 
   setDistortionAmount(amount) {
@@ -299,8 +317,8 @@ export class SynthEngine {
   }
 
   setPortamento(time) {
-    this.synth.set({
-      portamento: time
-    });
+    this.voices.forEach(voice => 
+      voice.set({ portamento: time })
+    );
   }
 }
