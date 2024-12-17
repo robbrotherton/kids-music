@@ -30,14 +30,22 @@ export class Looper {
     Tone.Transport.timeSignature = beats;
     Tone.Transport.bpm.value = 60000 / this.beatDuration;
     
-    // Single Part setup (remove the duplicate)
-    this.part = new Tone.Sequence((time, step) => {
+    // Single unified sequencer
+    this.sequence = new Tone.Sequence((time, step) => {
       this.currentStep = step;
       this.updateStepHighlight(step);
+      
+      // Process notes for this step
+      this.noteRecords.forEach(record => {
+        const stepInMeasure = record.startStep % this.stepsPerMeasure;
+        if (stepInMeasure === step) {
+          record.playOnFn(time);
+        }
+        if ((record.endStep % this.stepsPerMeasure) === step) {
+          record.playOffFn(time);
+        }
+      });
     }, [...Array(this.stepsPerMeasure).keys()], "16n").start(0);
-    
-    // Keep the original transport callback for note playback
-    Tone.Transport.scheduleRepeat(this.loop.bind(this), '16n');
   }
 
   start() {
@@ -64,25 +72,6 @@ export class Looper {
     }
   }
 
-  // Keep original loop method for now
-  loop(time) {
-    if (!this.isLooping) return;
-
-    this.currentStep = Math.floor((Tone.Transport.ticks / (Tone.Transport.PPQ / 4))) % this.stepsPerMeasure;
-    this.updateStepHighlight(this.currentStep);
-
-    // Keep processing existing noteRecords
-    this.noteRecords.forEach(record => {
-      const stepInMeasure = record.startStep % this.stepsPerMeasure;
-      if (stepInMeasure === this.currentStep) {
-        record.playOnFn && record.playOnFn(time);
-      }
-      if ((record.endStep % this.stepsPerMeasure) === this.currentStep) {
-        record.playOffFn && record.playOffFn(time);
-      }
-    });
-  }
-
   updateStepHighlight(currentStep) {
     this.stepDots.forEach((dot, index) => {
       dot.classList.toggle('current', index === currentStep);
@@ -91,8 +80,6 @@ export class Looper {
 
   clearAllEvents() {
     this.noteRecords = [];
-    // Clear sequence events instead of trying to remove them
-    this.part.events = [];
   }
 
   addNoteRecord(startStep, endStep, playOnFn, playOffFn) {
@@ -100,7 +87,6 @@ export class Looper {
     if (endStep >= this.stepsPerMeasure * 2) endStep = this.stepsPerMeasure * 2 - 1;
     if (endStep < startStep) endStep = startStep;
     
-    // Just use the noteRecords array for now
     this.noteRecords.push({ startStep, endStep, playOnFn, playOffFn });
   }
 
