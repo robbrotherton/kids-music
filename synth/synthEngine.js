@@ -11,7 +11,14 @@ export class SynthEngine {
       volume: -6
     });
 
-    this.filter = new Tone.Filter(20000, "lowpass").toDestination();
+    // Update filter settings for more dramatic sweep
+    this.filter = new Tone.Filter({
+      type: "lowpass",
+      frequency: 20000,
+      Q: 8,          // Increased resonance for that squelchy sound
+      rolloff: -24   // Steeper filter slope for more dramatic effect
+    }).toDestination();
+    
     this.synth.connect(this.filter);
 
     this.chordMode = true;
@@ -147,7 +154,21 @@ export class SynthEngine {
   }
 
   setCutoffFrequency(freq) {
-    this.filter.frequency.linearRampToValueAtTime(freq, Tone.now() + 0.1);
+    // Use exponential scaling for more musical filter sweep
+    const minFreq = 80;    // Lower bottom frequency
+    const maxFreq = 12000; // Slightly reduced top end
+    
+    // Add slight smoothing to the sweep
+    this.filter.frequency.exponentialRampToValueAtTime(
+      Math.max(minFreq, Math.min(maxFreq, freq)), 
+      Tone.now() + 0.03
+    );
+
+    // Dynamically adjust Q based on frequency
+    // More resonance in the mid-range, less at extremes
+    const normalizedFreq = (freq - minFreq) / (maxFreq - minFreq);
+    const qValue = 4 + (8 * Math.sin(normalizedFreq * Math.PI)); // Q varies from 4 to 12
+    this.filter.Q.value = qValue;
   }
 
   setCutoffAndVolume(freq, vol) {
