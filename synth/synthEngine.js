@@ -13,6 +13,20 @@ export class SynthEngine {
   }
 
   async initialize() {
+    // Create a master output gain for normalization
+    this.outputGain = new Tone.Gain(0.8).toDestination();
+    this.compressor = new Tone.Compressor({
+      threshold: -20,    // start compressing at -20dB
+      ratio: 4,         // 4:1 compression ratio
+      attack: 0.003,    // fast attack to catch transients
+      release: 0.25,    // moderate release
+      knee: 5           // moderate softening of compression curve
+    });
+
+    this.filter.disconnect();
+    this.filter.connect(this.compressor);
+    this.compressor.connect(this.outputGain);
+
     // Create a gain node for amplitude modulation with no effect
     this.tremoloGain = new Tone.Gain(1);
     this.tremoloLFO = new Tone.LFO({
@@ -20,7 +34,7 @@ export class SynthEngine {
       min: 1,        // Start with no effect (full volume)
       max: 1,        // Start with no effect (full volume)
       type: 'sine'
-    }).connect(this.tremoloGain.gain);
+    });
 
     this.vibrato = new Tone.Vibrato({
       frequency: 5,
@@ -39,6 +53,10 @@ export class SynthEngine {
       wet: 0         // Start bypassed
     });
 
+    // Wait only for reverb to generate its impulse response
+    await this.reverb.generate();
+
+    this.tremoloLFO.connect(this.tremoloGain.gain);
     this.tremoloLFO.start();
 
     // Chain everything once and leave it connected
@@ -51,12 +69,32 @@ export class SynthEngine {
       this.filter
     );
 
-    // Make sure all effects start bypassed via wet mix
+    // Make sure all effects start clean
+    this.resetEffects();
+    
+    return this;
+  }
+
+  resetEffects() {
+    // Reset all effects to clean state
     this.delay.wet.value = 0;
     this.reverb.wet.value = 0;
     this.vibrato.wet.value = 0;
-    
-    return this;
+    this.tremoloGain.gain.value = 1;
+    this.tremoloLFO.min = 1;
+    this.tremoloLFO.max = 1;
+  }
+
+  cleanup() {
+    // Proper cleanup of audio nodes
+    this.tremoloLFO.stop();
+    this.synth.disconnect();
+    this.tremoloGain.disconnect();
+    this.delay.disconnect();
+    this.reverb.disconnect();
+    this.filter.disconnect();
+    this.compressor.disconnect();
+    this.outputGain.disconnect();
   }
 
   setWaveform(wave) {
@@ -64,11 +102,12 @@ export class SynthEngine {
   }
 
   setVolume(vol) {
-    this.synth.volume.value = Tone.gainToDb(vol);
+    const dbValue = Tone.gainToDb(vol);
+    this.synth.volume.linearRampToValueAtTime(dbValue, Tone.now() + 0.1);
   }
 
   setCutoffFrequency(freq) {
-    this.filter.frequency.value = freq;
+    this.filter.frequency.linearRampToValueAtTime(freq, Tone.now() + 0.1);
   }
 
   setCutoffAndVolume(freq, vol) {
@@ -77,56 +116,58 @@ export class SynthEngine {
   }
 
   setTremoloRate(rate) {
-    this.tremoloLFO.frequency.value = rate;
+    this.tremoloLFO.frequency.linearRampToValueAtTime(rate, Tone.now() + 0.1);
   }
 
   setTremoloDepth(depth) {
-    // Scale depth from 0-1 range to proper gain values
+    const now = Tone.now();
     if (depth === 0) {
-      // No tremolo - fixed gain at 1
       this.tremoloLFO.min = 1;
       this.tremoloLFO.max = 1;
-      this.tremoloGain.gain.value = 1;
+      this.tremoloGain.gain.linearRampToValueAtTime(1, now + 0.1);
     } else {
-      // Map depth to gain range
-      // At full depth (1.0): min=0 (silence) to max=1 (full volume)
-      // At partial depth: min=1-depth to max=1
-      this.tremoloLFO.min = Math.max(0, 1 - depth);
+      const min = Math.max(0, 1 - depth);
+      this.tremoloLFO.min = min;
       this.tremoloLFO.max = 1;
-      this.tremoloGain.gain.value = this.tremoloLFO.min;  // Start at minimum
+      this.tremoloGain.gain.linearRampToValueAtTime(min, now + 0.1);
     }
   }
 
   setVibratoRate(rate) {
-    this.vibrato.frequency.value = rate;
+    this.vibrato.frequency.linearRampToValueAtTime(rate, Tone.now() + 0.1);
   }
 
   setVibratoDepth(depth) {
-    this.vibrato.depth.value = depth;
-    // Bypass vibrato when depth is 0
-    this.vibrato.wet.value = depth === 0 ? 0 : 1;
+    const now = Tone.now();
+    this.vibrato.depth.linearRampToValueAtTime(depth, now + 0.1);
+    this.vibrato.wet.linearRampToValueAtTime(depth === 0 ? 0 : 1, now + 0.1);
   }
 
   setDelayTime(time) {
-    this.delay.delayTime.value = time;
+    this.delay.delayTime.linearRampToValueAtTime(time, Tone.now() + 0.1);
   }
 
   setDelayFeedback(fb) {
-    this.delay.feedback.value = fb;
+    this.delay.feedback.linearRampToValueAtTime(fb, Tone.now() + 0.1);
   }
 
   setDelayWet(wet) {
-    this.delay.wet.value = wet;
-    // No more disconnect/connect, just use the wet parameter
+    this.delay.wet.linearRampToValueAtTime(wet, Tone.now() + 0.1);
   }
 
   setReverbDecay(decay) {
-    this.reverb.decay = decay;
+    // Can't ramp reverb decay, but we can ramp its wet value during changes
+    const currentWet = this.reverb.wet.value;
+    const now = Tone.now();
+    this.reverb.wet.linearRampToValueAtTime(0, now + 0.1);
+    setTimeout(() => {
+      this.reverb.decay = decay;
+      this.reverb.wet.linearRampToValueAtTime(currentWet, now + 0.2);
+    }, 100);
   }
 
   setReverbWet(wet) {
-    this.reverb.wet.value = wet;
-    // No more disconnect/connect, just use the wet parameter
+    this.reverb.wet.linearRampToValueAtTime(wet, Tone.now() + 0.1);
   }
 
   setLooperRef(looperRef) {
@@ -135,6 +176,8 @@ export class SynthEngine {
 
   stopAllOscillators() {
     this.synth.releaseAll();
+    // Optional: reset effects when stopping all sound
+    this.resetEffects();
   }
 
   noteOn(freq) {

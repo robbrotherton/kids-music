@@ -9,6 +9,18 @@ import { createSynthUI } from './synthUI.js';
  */
 export async function initSynth(container, looperRef) {
   const engine = await new SynthEngine().initialize();
+  
+  // Add cleanup handlers
+  const cleanup = () => {
+    engine.cleanup();
+    window.removeEventListener('unload', cleanup);
+  };
+
+  window.addEventListener('unload', cleanup);
+
+  // Expose cleanup method for module disposal
+  engine.destroy = cleanup;
+
   createSynthUI(container, engine, looperRef);
   if (looperRef) {
     engine.setLooperRef(looperRef);
