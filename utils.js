@@ -23,7 +23,7 @@ export class Knob {
     
     this.container.appendChild(labelEl);
     this.container.appendChild(this.knobEl);
-    this.container.appendChild(this.valueEl);
+    // this.container.appendChild(this.valueEl);
     
     this.setupEvents();
     this.updateRotation();
@@ -34,7 +34,8 @@ export class Knob {
     let startValue;
     
     const onMove = (e) => {
-      const delta = startY - e.clientY;
+      const y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+      const delta = startY - y;
       const range = this.max - this.min;
       const newValue = startValue + (delta / 100) * range;
       this.setValue(Math.max(this.min, Math.min(this.max, newValue)));
@@ -43,14 +44,22 @@ export class Knob {
     const onEnd = () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
     };
     
-    this.knobEl.addEventListener('mousedown', (e) => {
-      startY = e.clientY;
+    const onStart = (e) => {
+      e.preventDefault();
+      startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
       startValue = this.value;
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onEnd);
-    });
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd);
+    };
+
+    this.knobEl.addEventListener('mousedown', onStart);
+    this.knobEl.addEventListener('touchstart', onStart, { passive: false });
   }
 
   setValue(value) {

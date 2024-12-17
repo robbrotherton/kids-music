@@ -30,6 +30,7 @@ h1 {
   display: none;
   margin: 10px;
   max-width: 50vw;
+  user-select: none;
 }
 
 .container.active {
