@@ -255,7 +255,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
   // Create separate containers for different control groups
   const mainControls = document.createElement('div');
   mainControls.className = 'control-group main-controls';
-  mainControls.setAttribute('data-label', 'Main Controls');
+  mainControls.setAttribute('data-label', 'Core Controls');
   
   const modulationControls = document.createElement('div');
   modulationControls.className = 'control-group modulation-controls';
@@ -264,10 +264,6 @@ export function createSynthUI(container, synthEngine, looperRef) {
   const timeEffectsControls = document.createElement('div');
   timeEffectsControls.className = 'control-group time-effects-controls';
   timeEffectsControls.setAttribute('data-label', 'Time Effects');
-  
-  const characterControls = document.createElement('div');
-  characterControls.className = 'control-group character-controls';
-  characterControls.setAttribute('data-label', 'Character');
 
   // Create toggle controls FIRST
   const chordToggleLabel = document.createElement('label');
@@ -280,28 +276,31 @@ export function createSynthUI(container, synthEngine, looperRef) {
   });
   chordToggleLabel.appendChild(chordToggle);
 
-  const portamentoLabel = document.createElement('label');
-  portamentoLabel.textContent = ' glide ';
-  const portamentoToggle = document.createElement('input');
-  portamentoToggle.type = 'checkbox';
-  portamentoToggle.checked = false;
-  portamentoToggle.addEventListener('change', () => {
-    synthEngine.setPortamento(portamentoToggle.checked ? 0.1 : 0);
-  });
-  portamentoLabel.appendChild(portamentoToggle);
-
   // Performance controls
   const performanceControls = document.createElement('div');
   performanceControls.className = 'performance-controls';
   performanceControls.appendChild(chordToggleLabel);
-  performanceControls.appendChild(portamentoLabel);
+
+  // Add glide knob
+  const glideKnob = new Knob({
+    min: 0, max: 0.5, value: 0,
+    label: 'Glide',
+    onChange: (value) => synthEngine.setPortamento(value)
+  });
 
   // Core synth controls section
   waveSelectContainer.className = 'wave-selector';
   mainControls.appendChild(waveSelectContainer);
   mainControls.appendChild(performanceControls);
-  [volumeKnob, filterKnob, resonanceKnob].forEach(knob => 
-    mainControls.appendChild(knob.container));
+  
+  // Create sub-group for core knobs
+  const coreKnobsGroup = document.createElement('div');
+  coreKnobsGroup.className = 'core-knobs-group';
+  [volumeKnob, filterKnob, resonanceKnob, distortionKnob].forEach(knob => 
+    coreKnobsGroup.appendChild(knob.container));
+  
+  mainControls.appendChild(coreKnobsGroup);
+  mainControls.appendChild(glideKnob.container);
 
   // Modulation controls section
   [
@@ -321,16 +320,11 @@ export function createSynthUI(container, synthEngine, looperRef) {
     reverbSizeKnob,
     reverbMixKnob
   ].forEach(knob => timeEffectsControls.appendChild(knob.container));
-  
-  // Character effects section
-  [distortionKnob].forEach(knob => 
-    characterControls.appendChild(knob.container));
 
   // Add all control groups to main container
   controlsContainer.appendChild(mainControls);
   controlsContainer.appendChild(modulationControls);
   controlsContainer.appendChild(timeEffectsControls);
-  controlsContainer.appendChild(characterControls);
 
   container.appendChild(controlsContainer);
 }
