@@ -1,5 +1,4 @@
 import { buildChordIndices } from './chordLogic.js';
-import { getQuantizedStep } from '../utils.js';
 import { createFilterControls } from './filterControls.js';
 
 /**
@@ -35,7 +34,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
       keyEl.classList.add('active');
 
       if (looperRef?.isLooping) {
-        startStep = getQuantizedStep(4, 4, looperRef.beatDuration);
+        startStep = looperRef.currentStep;
       }
     });
 
@@ -46,12 +45,15 @@ export function createSynthUI(container, synthEngine, looperRef) {
       keyEl.classList.remove('active');
 
       if (looperRef?.isLooping && startStep !== null) {
-        const endStep = getQuantizedStep(4, 4, looperRef.beatDuration);
-        looperRef.addNoteRecord(startStep, endStep, () => {
-          chordIndices.forEach(idx => synthEngine.noteOn(noteData[idx].freq));
-        }, () => {
-          chordIndices.forEach(idx => synthEngine.noteOff(noteData[idx].freq));
-        });
+        const endStep = looperRef.currentStep;
+        looperRef.addNoteRecord(startStep, endStep, 
+          (time) => {
+            chordIndices.forEach(idx => synthEngine.noteOn(noteData[idx].freq, time));
+          }, 
+          (time) => {
+            chordIndices.forEach(idx => synthEngine.noteOff(noteData[idx].freq, time));
+          }
+        );
       }
       startStep = null;
     });

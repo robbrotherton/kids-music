@@ -1,121 +1,101 @@
 export class Looper {
-    constructor(stepIndicatorContainer, beats = 4, beatDuration = 500, synthRef = null) {
-      this.beats = beats;         
-      this.subStepsPerBeat = 4;    // 16 steps total
-      this.stepsPerMeasure = this.beats * this.subStepsPerBeat; 
-      this.beatDuration = beatDuration; // ms per beat, from BPM
-      this.stepDuration = this.beatDuration / this.subStepsPerBeat;
-      this.measureDuration = this.beats * this.beatDuration;
-      this.currentMeasureStartTime = null;
-  
-      this.synthRef = synthRef;
-      this.isLooping = false;
-  
-      this.loopTimer = null;
-      this.scheduledTimeouts = [];
-  
-      this.noteRecords = [];
-      this.stepDots = [];
-  
-      // build the 16-step indicator
-      for (let i = 0; i < this.stepsPerMeasure; i++) {
-        const dotEl = document.createElement('div');
-        dotEl.classList.add('dot');
-        if (i % 4 === 0) {
-          dotEl.classList.add('main-beat');
-        }
-        this.stepDots.push(dotEl);
-        stepIndicatorContainer.appendChild(dotEl);
-      }
-      this.updateStepHighlight(-1);
-    }
-  
-    start() {
-      if (this.isLooping) return;
-      this.isLooping = true;
-      this.scheduleNextLoop();
-    }
-  
-    stop() {
-      this.isLooping = false;
-      clearTimeout(this.loopTimer);
-      this.scheduledTimeouts.forEach(handle => clearTimeout(handle));
-      this.scheduledTimeouts = [];
-      this.updateStepHighlight(-1);  // Clear step indicator
+  constructor(stepIndicatorContainer, beats = 4, beatDuration = 500, synthRef = null) {
+    this.beats = beats;
+    this.subStepsPerBeat = 4; // 16 steps total
+    this.stepsPerMeasure = this.beats * this.subStepsPerBeat;
+    this.beatDuration = beatDuration; // ms per beat, from BPM
+    this.stepDuration = this.beatDuration / this.subStepsPerBeat;
+    this.measureDuration = this.beats * this.beatDuration;
 
-      // Make sure to release all notes and reset synth state
-      if (this.synthRef) {
-        // First trigger release for any actively playing notes
-        this.noteRecords.forEach(record => {
-          record.playOffFn && record.playOffFn();
-        });
-        // Then ensure all oscillators are stopped if the method exists
-        if (typeof this.synthRef.stopAllOscillators === 'function') {
-          this.synthRef.stopAllOscillators();
-        }
+    this.synthRef = synthRef;
+    this.isLooping = false;
+
+    this.noteRecords = [];
+    this.stepDots = [];
+    this.currentStep = 0; // Initialize currentStep
+
+    // build the 16-step indicator
+    for (let i = 0; i < this.stepsPerMeasure; i++) {
+      const dotEl = document.createElement('div');
+      dotEl.classList.add('dot');
+      if (i % 4 === 0) {
+        dotEl.classList.add('main-beat');
       }
+      this.stepDots.push(dotEl);
+      stepIndicatorContainer.appendChild(dotEl);
     }
-  
-    scheduleNextLoop() {
-      if (!this.isLooping) return;
-  
-      this.currentMeasureStartTime = performance.now();
-      // schedule note on/off
+    this.updateStepHighlight(-1);
+
+    // Tone.js Transport setup
+    Tone.Transport.bpm.value = 60000 / this.beatDuration;
+    Tone.Transport.scheduleRepeat(this.loop.bind(this), '16n');
+  }
+
+  start() {
+    if (this.isLooping) return;
+    this.isLooping = true;
+    this.currentMeasureStartTime = Tone.Transport.seconds;
+    Tone.Transport.start();
+  }
+
+  stop() {
+    this.isLooping = false;
+    Tone.Transport.stop();
+    console.log('Looper stopped');
+    this.updateStepHighlight(-1); // Clear step indicator
+
+    // Make sure to release all notes and reset synth state
+    if (this.synthRef) {
       this.noteRecords.forEach(record => {
-        const onDelay = record.startStep * this.stepDuration;
-        const offDelay = record.endStep * this.stepDuration;
-  
-        const onHandle = setTimeout(() => {
-          if (!this.isLooping) return;
-          record.playOnFn && record.playOnFn();
-        }, onDelay);
-        this.scheduledTimeouts.push(onHandle);
-  
-        const offHandle = setTimeout(() => {
-          if (!this.isLooping) return;
-          record.playOffFn && record.playOffFn();
-        }, offDelay);
-        this.scheduledTimeouts.push(offHandle);
+        record.playOffFn && record.playOffFn();
       });
-  
-      // highlight step dots 
-      let currentStep = 0;
-      const stepInterval = setInterval(() => {
-        if (!this.isLooping) {
-          clearInterval(stepInterval);
-          return;
-        }
-        this.updateStepHighlight(currentStep);
-        currentStep = (currentStep + 1) % this.stepsPerMeasure;
-      }, this.stepDuration);
-  
-      this.loopTimer = setTimeout(() => {
-        clearInterval(stepInterval);
-        this.scheduledTimeouts = [];
-        this.scheduleNextLoop(); 
-      }, this.measureDuration);
-    }
-  
-    updateStepHighlight(currentStep) {
-      this.stepDots.forEach((dot, index) => {
-        dot.classList.toggle('current', index === currentStep);
-      });
-    }
-  
-    clearAllEvents() {
-      this.noteRecords = [];
-    }
-  
-    addNoteRecord(startStep, endStep, playOnFn, playOffFn) {
-      if (startStep >= this.stepsPerMeasure) startStep = this.stepsPerMeasure - 1;
-      if (endStep >= this.stepsPerMeasure) endStep = this.stepsPerMeasure - 1;
-      if (endStep < startStep) endStep = startStep;
-      this.noteRecords.push({ startStep, endStep, playOnFn, playOffFn });
-    }
-
-    setBeatDuration(newBeatDuration) {
-      this.beatDuration = newBeatDuration;
-      this.stepDuration = this.beatDuration / this.subStepsPerBeat;
-      this.measureDuration = this.beats * this.beatDuration;
+      if (typeof this.synthRef.stopAllOscillators === 'function') {
+        this.synthRef.stopAllOscillators();
+      }
     }
   }
+
+  loop(time) {
+    if (!this.isLooping) return;
+
+    this.currentStep = Math.floor((Tone.Transport.ticks / (Tone.Transport.PPQ / 4))) % this.stepsPerMeasure;
+    this.updateStepHighlight(this.currentStep);
+
+    this.noteRecords.forEach(record => {
+      const stepInMeasure = record.startStep % this.stepsPerMeasure;
+      if (stepInMeasure === this.currentStep) {
+        console.log(`Playing note on at step ${this.currentStep}`);
+        record.playOnFn && record.playOnFn(time);
+      }
+      if ((record.endStep % this.stepsPerMeasure) === this.currentStep) {
+        console.log(`Playing note off at step ${this.currentStep}`);
+        record.playOffFn && record.playOffFn(time);
+      }
+    });
+  }
+
+  updateStepHighlight(currentStep) {
+    this.stepDots.forEach((dot, index) => {
+      dot.classList.toggle('current', index === currentStep);
+    });
+  }
+
+  clearAllEvents() {
+    this.noteRecords = [];
+  }
+
+  addNoteRecord(startStep, endStep, playOnFn, playOffFn) {
+    if (startStep >= this.stepsPerMeasure * 2) startStep = this.stepsPerMeasure * 2 - 1;
+    if (endStep >= this.stepsPerMeasure * 2) endStep = this.stepsPerMeasure * 2 - 1;
+    if (endStep < startStep) endStep = startStep;
+    this.noteRecords.push({ startStep, endStep, playOnFn, playOffFn });
+  }
+
+  setBeatDuration(newBeatDuration) {
+    this.beatDuration = newBeatDuration;
+    this.stepDuration = this.beatDuration / this.subStepsPerBeat;
+    this.measureDuration = this.beats * this.beatDuration;
+    Tone.Transport.bpm.value = 60000 / this.beatDuration;
+    console.log(`Beat duration set to ${this.beatDuration} ms, BPM: ${Tone.Transport.bpm.value}`);
+  }
+}

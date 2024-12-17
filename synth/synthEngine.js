@@ -241,12 +241,12 @@ export class SynthEngine {
     this.resetEffects();
   }
 
-  noteOn(freq) {
-    this.synth.triggerAttack(freq);
+  noteOn(freq, time = undefined) {
+    this.synth.triggerAttack(freq, time);
   }
 
-  noteOff(freq) {
-    this.synth.triggerRelease(freq);
+  noteOff(freq, time = undefined) {
+    this.synth.triggerRelease(freq, time);
   }
 
   setWahRate(rate) {
