@@ -1,0 +1,387 @@
+.waveform-icon {
+    filter: invert();
+  }
+  
+  .waveform-label {
+    display: flex;
+    align-items: center;
+    margin: 5px;
+  }
+  
+  .waveform-label input {
+    margin-right: 10px;
+  }
+  
+  .waveform-icon {
+    width: 24px;
+    height: 24px;
+    filter: invert();
+  }
+  
+  .waveform-label input[type="radio"] {
+    display: none;
+  }
+  
+  .waveform-label input[type="radio"]+.waveform-icon {
+    border: none;
+  }
+  
+  .waveform-label input[type="radio"]:checked+.waveform-icon {
+    border: 2px solid rgb(78, 78, 78);
+  }
+  
+  .controls-container {
+    width: fit-content;  /* Take full width */
+    display: flex;
+    flex-direction: column;  /* Stack main row and effects row */
+    gap: 10px;
+    padding: 15px;
+    background: #2a2a2a;
+    border-radius: 10px;
+    margin-top: 20px;
+    transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+    max-height: 1000px;
+    opacity: 1;
+    overflow: hidden;
+  }
+  
+  .controls-container.hidden {
+    max-height: 0;
+    opacity: 0;
+    padding: 0;
+    margin: 0;
+  }
+  
+  /* Each control group now takes full width */
+  .control-group {
+    display: flex;
+    flex-direction: row;  /* Horizontal layout */
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    border-radius: 8px;
+    position: relative;
+  }
+  
+  /* Main controls is now a row */
+  .main-controls {
+    background: #333;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 20px;
+  }
+  
+  /* All subgroups are now horizontal */
+  .core-knobs-group,
+  .envelope-group,
+  .filter-envelope-group {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    padding: 15px;
+    background: #3a3a3a;
+    border-radius: 6px;
+    margin: 0;
+    flex-shrink: 0;  /* Prevent shrinking */
+  }
+  
+  /* Wave selector and performance controls */
+  .wave-selector,
+  .performance-controls {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    padding: 10px;
+    background: #383838;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  
+  /* Effects row container */
+  .effects-row {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    width: 100%;
+  }
+  
+  /* Modulation and time effects as rows */
+  .modulation-controls,
+  .time-effects-controls {
+    /* display: flex; */
+    flex-direction: row;
+    flex: 1;
+    gap: 10px;
+    padding: 15px;
+  }
+  
+  .modulation-controls {
+    background: #2d2d2d;
+  }
+  
+  .time-effects-controls {
+    background: #282828;
+  }
+  
+  /* Ensure knob containers have consistent size */
+  .knob-container {
+    /* flex-shrink: 0; */
+  }
+  
+  /* Keep other control groups flexible */
+  .time-effects-controls,
+  .character-controls {
+    flex: 1 1 300px;
+    /* ...existing properties... */
+  }
+  
+  /* Ensure knobs in main controls are centered */
+  .main-controls .knob-container {
+    align-self: center;
+    width: 100%;
+  }
+  
+  /* Specific layouts for each section */
+  .modulation-controls {
+    flex: 1 1 calc(50% - 15px); /* 50% width minus gap */
+    min-width: 300px; /* Ensure minimum readable width */
+    /* display: grid; */
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 10px;
+    padding: 15px;
+    background: #2d2d2d;
+  }
+  
+  .time-effects-controls {
+    flex: 1 1 calc(50% - 15px); /* 50% width minus gap */
+    min-width: 300px; /* Ensure minimum readable width */
+    /* display: grid; */
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 10px;
+    padding: 15px;
+    background: #282828;
+  }
+  
+  .character-controls {
+    flex: 1 1 calc(50% - 15px); /* 50% width minus gap */
+    min-width: 300px; /* Ensure minimum readable width */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 10px;
+    padding: 15px;
+    background: #252525;
+  }
+  
+  .wave-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 8px;
+    background: #383838;
+    border-radius: 6px;
+  }
+  
+  .performance-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px;
+    background: #383838;
+    border-radius: 6px;
+    margin: 0;
+  }
+  
+  /* Ensure knob containers don't grow too large */
+  .knob-container {
+    min-width: 60px;
+    max-width: 100px;
+    justify-self: center;
+  }
+  
+  /* Update toggle styles to match knob aesthetic */
+  .performance-controls label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #ddd;
+    font-size: 0.8em;
+  }
+  
+  .performance-controls input[type="checkbox"] {
+    accent-color: #666;
+  }
+  
+  .toggles-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 15px;
+  }
+  
+  /* Add section labels */
+  .control-group::before {
+    content: attr(class);
+    position: absolute;
+    top: -8px;
+    left: 10px;
+    font-size: 0.75em;
+    color: #999;
+    background: inherit;
+    padding: 0 5px;
+  }
+  
+  .knob-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .knob {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: #444;
+    position: relative;
+    cursor: pointer;
+    border: 2px solid #555;
+  }
+  
+  .knob::before {
+    content: '';
+    position: absolute;
+    width: 3px;
+    height: 15px;
+    background: #fff;
+    left: 50%;
+    top: 5px;
+    transform-origin: bottom;
+    transform: translateX(-50%);
+  }
+  
+  .knob-label {
+    font-size: 11px;
+    text-align: center;
+    color: #ddd;
+  }
+  
+  .knob-value {
+    font-size: 9px;
+    color: #999;
+  }
+  
+  .controls-toggle-btn {
+    margin: 10px;
+    padding: 8px 15px;
+    background: #444;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .controls-toggle-btn:hover {
+    background: #555;
+  }
+  
+  /* New wave and performance controls group */
+  .wave-performance-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+    background: #3a3a3a;
+    border-radius: 6px;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  
+  /* Update wave selector to fill width */
+  .wave-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 8px;
+    background: #383838;
+    border-radius: 6px;
+    width: 100%;
+  }
+  
+  /* Update performance controls to fill width */
+  .performance-controls {
+    /* display: flex; */
+    justify-content: center;
+    gap: 10px;
+    padding: 8px;
+    background: #383838;
+    border-radius: 6px;
+    /* width: 100%; */
+  }
+
+  .envelopes-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+    background: #3a3a3a;
+    border-radius: 6px;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  
+  .envelope-group,
+  .filter-envelope-group {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    padding: 15px;
+    background: #444;
+    border-radius: 6px;
+    position: relative;
+  }
+  
+  /* Update the section labels to work with data-label */
+  .envelope-group::before,
+  .filter-envelope-group::before {
+    content: attr(data-label);
+    position: absolute;
+    top: -8px;
+    left: 10px;
+    font-size: 0.75em;
+    color: #999;
+    background: inherit;
+    padding: 0 5px;
+  }
+
+  .basic-controls-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: #3a3a3a;
+    border-radius: 6px;
+    position: relative;
+  }
+  
+  .basic-controls-group .wave-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 8px;
+    background: #444;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  
+  /* Update the section labels to handle the new group */
+  .basic-controls-group::before {
+    content: attr(data-label);
+    position: absolute;
+    top: -8px;
+    left: 10px;
+    font-size: 0.75em;
+    color: #999;
+    background: inherit;
+    padding: 0 5px;
+  }

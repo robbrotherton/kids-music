@@ -41,10 +41,14 @@ if (synth.setLooperRef) {
 drumViewBtn.addEventListener('click', () => {
   drumView.classList.add('active');
   synthView.classList.remove('active');
+  drumViewBtn.classList.add('active');
+  synthViewBtn.classList.remove('active');
 });
 synthViewBtn.addEventListener('click', () => {
   synthView.classList.add('active');
   drumView.classList.remove('active');
+  synthViewBtn.classList.add('active');
+  drumViewBtn.classList.remove('active');
 });
 
 let isRecording = false;

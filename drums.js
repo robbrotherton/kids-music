@@ -11,6 +11,11 @@ export function initDrums(container) {
   const pads = ['kick', 'snare', 'hihat', 'clap'];
   const colors = ['#FF5733', '#33FF57', '#3357FF', '#FF33A1'];
 
+  // Create wrapper for pads
+  const padsWrapper = document.createElement('div');
+  padsWrapper.classList.add('drum-pads-wrapper');
+  container.appendChild(padsWrapper);
+
   pads.forEach((sound, index) => {
     const padEl = document.createElement('div');
     padEl.classList.add('drum-pad');
@@ -34,6 +39,6 @@ export function initDrums(container) {
       }
     });
 
-    container.appendChild(padEl);
+    padsWrapper.appendChild(padEl);  // Append to wrapper instead of container
   });
 }

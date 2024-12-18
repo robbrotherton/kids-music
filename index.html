@@ -3,33 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <title>modular jam</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles/styles.css">
+  <link rel="stylesheet" href="styles/synthControls.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.35/Tone.min.js"></script>
 </head>
 <body>
-  <h1>my sweet modular jam</h1>
+  <div class="app-container">
+    <header class="top-section">
+      <div class="view-toggle">
+        <button id="drum-view-btn">drums</button>
+        <button id="synth-view-btn">synth</button>
+      </div>
+    </header>
 
-  <div class="view-toggle">
-    <button id="drum-view-btn">drums</button>
-    <button id="synth-view-btn">synth</button>
+    <main class="middle-section">
+      <div id="drum-view" class="container active"></div>
+      <div id="synth-view" class="container"></div>
+    </main>
+
+    <footer class="bottom-section">
+      <div class="sequencer-controls">
+        <div class="transport-controls">
+          <button id="record-btn">record</button>
+          <button id="play-pause-btn"></button>
+          <button id="clear-btn">clear</button>
+          <span id="status">not looping</span>
+        </div>
+
+        <div class="tempo-controls">
+          <label for="bpm-input">bpm:</label>
+          <input type="number" id="bpm-input" value="120" min="40" max="300" style="width:60px;">
+        </div>
+
+        <div class="step-indicator" id="step-indicator"></div>
+      </div>
+    </footer>
   </div>
 
-  <div id="drum-view" class="container active"></div>
-  <div id="synth-view" class="container"></div>
-
-  <div class="looper-controls">
-    <button id="record-btn">record</button>
-    <button id="play-pause-btn"></button>
-    <button id="clear-btn">clear</button>
-    <span id="status">not looping</span>
-
-    <label for="bpm-input">bpm:</label>
-    <input type="number" id="bpm-input" value="120" min="40" max="300" style="width:60px;">
-  </div>
-
-  <div class="step-indicator" id="step-indicator"></div>
-
-  <!-- main script -->
   <script type="module" src="index.js"></script>
 </body>
 </html>

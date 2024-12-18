@@ -158,7 +158,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
 
   // Replace the old controls with new knob-based controls
   const controlsContainer = document.createElement('div');
-  controlsContainer.className = 'controls-container hidden';
+  controlsContainer.className = 'controls-container';
 
   // Basic controls with initialization
   const volumeKnob = new Knob({
@@ -351,13 +351,15 @@ export function createSynthUI(container, synthEngine, looperRef) {
   const performanceControls = document.createElement('div');
   performanceControls.className = 'performance-controls';
   performanceControls.appendChild(chordToggleLabel);
-
+ 
   // Add glide knob
   const glideKnob = new Knob({
     min: 0, max: 0.5, value: 0,
     label: 'Glide',
     onChange: (value) => synthEngine.setPortamento(value)
   });
+
+  performanceControls.appendChild(glideKnob.container);
 
   // Core synth controls section
   waveSelectContainer.className = 'wave-selector';
@@ -367,28 +369,34 @@ export function createSynthUI(container, synthEngine, looperRef) {
   // Create sub-group for core knobs
   const coreKnobsGroup = document.createElement('div');
   coreKnobsGroup.className = 'core-knobs-group';
-  [volumeKnob, filterKnob, resonanceKnob, distortionKnob].forEach(knob => 
+  [volumeKnob, distortionKnob, filterKnob, resonanceKnob].forEach(knob => 
     coreKnobsGroup.appendChild(knob.container));
   
   mainControls.appendChild(coreKnobsGroup);
 
+  // Create parent envelope container
+  const envelopesContainer = document.createElement('div');
+  envelopesContainer.className = 'envelopes-container';
+
   // Create sub-group for envelope knobs
   const envelopeGroup = document.createElement('div');
   envelopeGroup.className = 'envelope-group';
+  envelopeGroup.setAttribute('data-label', 'Amplitude ADSR');
   [attackKnob, decayKnob, sustainKnob, releaseKnob].forEach(knob => 
     envelopeGroup.appendChild(knob.container));
-  
-  mainControls.appendChild(envelopeGroup);
 
   // Create sub-group for filter envelope knobs
   const filterEnvelopeGroup = document.createElement('div');
   filterEnvelopeGroup.className = 'filter-envelope-group';
+  filterEnvelopeGroup.setAttribute('data-label', 'Filter ADSR');
   [filterAttackKnob, filterDecayKnob, filterSustainKnob, filterReleaseKnob].forEach(knob => 
     filterEnvelopeGroup.appendChild(knob.container));
-  
-  mainControls.appendChild(filterEnvelopeGroup);
-  mainControls.appendChild(glideKnob.container);
 
+  // Add both envelope groups to the parent container
+  envelopesContainer.appendChild(envelopeGroup);
+  envelopesContainer.appendChild(filterEnvelopeGroup);
+
+  
   // Create sub-group for wave and performance controls
   const waveAndPerformanceGroup = document.createElement('div');
   waveAndPerformanceGroup.className = 'wave-performance-group';
@@ -397,12 +405,17 @@ export function createSynthUI(container, synthEngine, looperRef) {
   performanceControls.className = 'performance-controls';
   
   waveAndPerformanceGroup.appendChild(waveSelectContainer);
-  waveAndPerformanceGroup.appendChild(performanceControls);
   
   // Core synth controls section
+  waveAndPerformanceGroup.appendChild(coreKnobsGroup);
+  
+  
   mainControls.appendChild(waveAndPerformanceGroup);
-  mainControls.appendChild(coreKnobsGroup);
-
+  mainControls.appendChild(envelopesContainer);
+  // mainControls.appendChild(glideKnob.container);
+  mainControls.appendChild(performanceControls);
+  // mainControls.appendChild(chordToggleLabel);
+  
   // Modulation controls section
   [
     vibratoRateKnob,
@@ -433,15 +446,15 @@ export function createSynthUI(container, synthEngine, looperRef) {
   controlsContainer.appendChild(effectsRow);
 
   // Add controls toggle button
-  const controlsToggleBtn = document.createElement('button');
-  controlsToggleBtn.textContent = 'Show Controls';
-  controlsToggleBtn.className = 'controls-toggle-btn';
-  controlsToggleBtn.addEventListener('click', () => {
-    controlsContainer.classList.toggle('hidden');
-    controlsToggleBtn.textContent = controlsContainer.classList.contains('hidden') ? 'Show Controls' : 'Hide Controls';
-  });
+  // const controlsToggleBtn = document.createElement('button');
+  // controlsToggleBtn.textContent = 'Show Controls';
+  // controlsToggleBtn.className = 'controls-toggle-btn';
+  // controlsToggleBtn.addEventListener('click', () => {
+  //   controlsContainer.classList.toggle('hidden');
+  //   controlsToggleBtn.textContent = controlsContainer.classList.contains('hidden') ? 'Show Controls' : 'Hide Controls';
+  // });
 
   // Add toggle button first, then controls
-  container.appendChild(controlsToggleBtn);
+  // container.appendChild(controlsToggleBtn);
   container.appendChild(controlsContainer);
 }
