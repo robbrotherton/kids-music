@@ -5,6 +5,8 @@ export class Knob {
     this.value = params.value ?? this.min;
     this.onChange = params.onChange;
     this.label = params.label;
+    this.step = params.step ?? 0.01;
+    this.integer = params.integer ?? false;
     this.container = document.createElement('div');
     this.container.className = 'knob-container';
     
@@ -37,7 +39,20 @@ export class Knob {
       const y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
       const delta = startY - y;
       const range = this.max - this.min;
-      const newValue = startValue + (delta / 100) * range;
+      // Adjust sensitivity based on step size
+      const sensitivity = this.step > 0.1 ? 200 : 100;
+      let newValue = startValue + (delta / sensitivity) * range;
+      
+      // Apply stepping if specified
+      if (this.step) {
+        newValue = Math.round(newValue / this.step) * this.step;
+      }
+      
+      // Force integer values if specified
+      if (this.integer) {
+        newValue = Math.floor(newValue);
+      }
+      
       this.setValue(Math.max(this.min, Math.min(this.max, newValue)));
     };
     
@@ -63,15 +78,30 @@ export class Knob {
   }
 
   setValue(value) {
-    this.value = value;
+    let newValue = Math.min(this.max, Math.max(this.min, value));
+    
+    // Apply stepping if specified
+    if (this.step) {
+      newValue = Math.round(newValue / this.step) * this.step;
+    }
+    
+    // Force integer values if specified
+    if (this.integer) {
+      newValue = Math.floor(newValue);
+    }
+    
+    this.value = newValue;
     this.updateRotation();
-    this.onChange?.(value);
+    this.onChange?.(newValue);
   }
 
   updateRotation() {
     const percent = (this.value - this.min) / (this.max - this.min);
     const degrees = percent * 270 - 135;
     this.knobEl.style.transform = `rotate(${degrees}deg)`;
-    this.valueEl.textContent = this.value.toFixed(2);
+    // Format display value based on integer setting
+    this.valueEl.textContent = this.integer ? 
+      Math.floor(this.value).toString() : 
+      this.value.toFixed(2);
   }
 }

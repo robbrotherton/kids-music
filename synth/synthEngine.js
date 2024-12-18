@@ -1,7 +1,7 @@
 export class SynthEngine {
   constructor() {
     // Create multiple MonoSynths for polyphony
-    this.voices = Array(3).fill().map(() => new Tone.MonoSynth({
+    this.voices = Array(7).fill().map(() => new Tone.MonoSynth({ // Increase to 7 voices
       oscillator: { type: 'sine' },
       envelope: {
         attack: 0.005,  // Default
@@ -37,7 +37,7 @@ export class SynthEngine {
     // Connect all voices to the filter
     this.voices.forEach(voice => voice.connect(this.filter));
 
-    this.chordMode = true;
+    this.chordSize = 1; // Replace chordMode with chordSize
     this.looperRef = null;
     this.activeVoices = new Map(); // Track which voice is playing which note
   }
@@ -248,10 +248,15 @@ export class SynthEngine {
   }
 
   noteOn(freq, time = undefined) {
-    // Find first available voice
+    // Convert base frequency to note number
+    const baseNote = Tone.Frequency(freq).toMidi();
+    
+    // Find available voice
     const voice = this.voices.find(v => !this.activeVoices.has(v));
     if (voice) {
-      voice.triggerAttack(freq, time);
+      // Calculate actual frequency including octave offsets
+      const actualFreq = Tone.Frequency(baseNote, "midi").toFrequency();
+      voice.triggerAttack(actualFreq, time);
       this.activeVoices.set(voice, freq);
     }
   }
@@ -338,10 +343,13 @@ export class SynthEngine {
 
   setDistortionAmount(amount) {
     const now = Tone.now();
-    this.distortion.distortion = amount * 2; // Double the distortion effect
+    // Scale distortion based on chord size
+    const scaledAmount = amount / Math.sqrt(this.chordSize);  // Square root for gentler scaling
+    this.distortion.distortion = scaledAmount * 2;
     this.distortion.wet.linearRampToValueAtTime(amount === 0 ? 0 : 1, now + 0.1);
     
-    const compensationDb = -6 * amount;  // Less compensation for more dramatic effect
+    // Also scale compensation gain based on chord size
+    const compensationDb = -6 * scaledAmount;
     const compensationGain = Tone.dbToGain(compensationDb);
     this.distortionCompensation.gain.linearRampToValueAtTime(compensationGain, now + 0.1);
   }
@@ -358,5 +366,10 @@ export class SynthEngine {
   
   setFilterQ(q) {
     this.filter.Q.setValueAtTime(q, Tone.now());
+  }
+
+  // Add new method
+  setChordSize(size) {
+    this.chordSize = Math.max(1, Math.min(7, Math.floor(size)));
   }
 }
