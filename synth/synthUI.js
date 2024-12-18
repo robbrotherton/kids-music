@@ -58,6 +58,10 @@ export function createSynthUI(container, synthEngine, looperRef) {
     }
   };
 
+  // Create keys container
+  const keysContainer = document.createElement('div');
+  keysContainer.className = 'synth-keys-container';
+
   noteData.forEach((n, i) => {
     const keyEl = document.createElement('div');
     keyEl.classList.add('synth-key');
@@ -120,12 +124,13 @@ export function createSynthUI(container, synthEngine, looperRef) {
       if (e.buttons > 0 && e.currentTarget.hasPointerCapture(e.pointerId)) {
         const targetKey = document.elementFromPoint(e.clientX, e.clientY);
         if (targetKey?.classList.contains('synth-key') && targetKey !== activeKey) {
-          startNote(targetKey, Array.from(container.children).indexOf(targetKey));
+          // Use keysContainer.children instead of container.children
+          startNote(targetKey, Array.from(keysContainer.children).indexOf(targetKey));
         }
       }
     });
 
-    container.appendChild(keyEl);
+    keysContainer.appendChild(keyEl);  // Append to keysContainer instead of main container
   });
 
   // waveform select
@@ -445,16 +450,14 @@ export function createSynthUI(container, synthEngine, looperRef) {
   controlsContainer.appendChild(mainControls);
   controlsContainer.appendChild(effectsRow);
 
-  // Add controls toggle button
-  // const controlsToggleBtn = document.createElement('button');
-  // controlsToggleBtn.textContent = 'Show Controls';
-  // controlsToggleBtn.className = 'controls-toggle-btn';
-  // controlsToggleBtn.addEventListener('click', () => {
-  //   controlsContainer.classList.toggle('hidden');
-  //   controlsToggleBtn.textContent = controlsContainer.classList.contains('hidden') ? 'Show Controls' : 'Hide Controls';
-  // });
-
-  // Add toggle button first, then controls
-  // container.appendChild(controlsToggleBtn);
-  container.appendChild(controlsContainer);
+  // Create wrapper for entire synth
+  const synthWrapper = document.createElement('div');
+  synthWrapper.className = 'synth-wrapper';
+  
+  // Add containers to wrapper in correct order
+  synthWrapper.appendChild(keysContainer);
+  synthWrapper.appendChild(controlsContainer);
+  
+  // Add wrapper to main container
+  container.appendChild(synthWrapper);
 }

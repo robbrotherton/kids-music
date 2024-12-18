@@ -387,3 +387,38 @@
     background: inherit;
     padding: 0 5px;
   }
+
+  .synth-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 1200px; /* Add max-width to prevent stretching too wide */
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    margin: 0 auto;
+  }
+  
+  .synth-keys-container {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 20px;
+    background: #333;
+    border-radius: 10px;
+    width: 100%; /* Take full width */
+    margin: 0 auto;
+  }
+  
+  .synth-key {
+    flex: 1; /* Make keys grow equally */
+    min-width: 0; /* Allow shrinking below content size */
+    height: 200px;
+  }
+  
+  .controls-container {
+    width: fit-content;
+    margin: 20px auto 0;
+    /* Remove transform as we're using proper layout now */
+    transform: none;
+  }
