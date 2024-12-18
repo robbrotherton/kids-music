@@ -41,10 +41,18 @@ export function createSynthUI(container, synthEngine, looperRef) {
       const chordIndices = buildChordIndices(activeNoteIndex, synthEngine.chordSize);
       looperRef.addNoteRecord(startStep, endStep,
         (time) => {
-          chordIndices.forEach(idx => synthEngine.noteOn(noteData[idx].freq, time));
+          chordIndices.forEach(({ index, octave }) => {
+            const baseNote = noteData[index].freq;
+            const finalNote = `${baseNote}${4 + octave}`;
+            synthEngine.noteOn(finalNote, time);
+          });
         },
         (time) => {
-          chordIndices.forEach(idx => synthEngine.noteOff(noteData[idx].freq, time));
+          chordIndices.forEach(({ index, octave }) => {
+            const baseNote = noteData[index].freq;
+            const finalNote = `${baseNote}${4 + octave}`;
+            synthEngine.noteOff(finalNote, time);
+          });
         }
       );
     }
@@ -92,6 +100,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
       }
     });
 
+    // Modify the looper record section in the pointerup event listener
     keyEl.addEventListener('pointerup', e => {
       e.preventDefault();
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
@@ -101,13 +110,21 @@ export function createSynthUI(container, synthEngine, looperRef) {
       // Record the final note release
       if (looperRef?.isLooping && activeNoteIndex !== null && startStep !== null) {
         const endStep = looperRef.currentStep;
-        const chordIndices = buildChordIndices(activeNoteIndex, synthEngine.chordMode ? 'triad' : 'single');
+        const chordIndices = buildChordIndices(activeNoteIndex, synthEngine.chordSize);
         looperRef.addNoteRecord(startStep, endStep,
           (time) => {
-            chordIndices.forEach(idx => synthEngine.noteOn(noteData[idx].freq, time));
+            chordIndices.forEach(({ index, octave }) => {
+              const baseNote = noteData[index].freq;
+              const finalNote = `${baseNote}${4 + octave}`;
+              synthEngine.noteOn(finalNote, time);
+            });
           },
           (time) => {
-            chordIndices.forEach(idx => synthEngine.noteOff(noteData[idx].freq, time));
+            chordIndices.forEach(({ index, octave }) => {
+              const baseNote = noteData[index].freq;
+              const finalNote = `${baseNote}${4 + octave}`;
+              synthEngine.noteOff(finalNote, time);
+            });
           }
         );
       }
