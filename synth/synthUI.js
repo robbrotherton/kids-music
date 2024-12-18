@@ -158,7 +158,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
 
   // Replace the old controls with new knob-based controls
   const controlsContainer = document.createElement('div');
-  controlsContainer.className = 'controls-container';
+  controlsContainer.className = 'controls-container hidden';
 
   // Basic controls with initialization
   const volumeKnob = new Knob({
@@ -258,63 +258,63 @@ export function createSynthUI(container, synthEngine, looperRef) {
     onChange: (value) => synthEngine.setWahDepth(value)
   });
 
-  // Add ADSR Knobs
+  // Add ADSR Knobs with Tone.js defaults
   const attackKnob = new Knob({
-    min: 0.01, max: 2.0, value: 0.01,
+    min: 0.001, max: 2.0, value: 0.005,  // Default 0.005
     label: 'Attack',
     onChange: (value) => synthEngine.setAttack(value)
   });
-  synthEngine.setAttack(0.01);
+  synthEngine.setAttack(0.005);
 
   const decayKnob = new Knob({
-    min: 0.01, max: 2.0, value: 0.1,
+    min: 0.001, max: 2.0, value: 0.1,    // Default 0.1
     label: 'Decay',
     onChange: (value) => synthEngine.setDecay(value)
   });
   synthEngine.setDecay(0.1);
 
   const sustainKnob = new Knob({
-    min: 0, max: 1.0, value: 0.7,
+    min: 0, max: 1.0, value: 0.9,        // Default 0.9
     label: 'Sustain',
     onChange: (value) => synthEngine.setSustain(value)
   });
-  synthEngine.setSustain(0.7);
+  synthEngine.setSustain(0.9);
 
   const releaseKnob = new Knob({
-    min: 0.01, max: 3.0, value: 0.1,
+    min: 0.001, max: 4.0, value: 1.0,    // Default 1.0
     label: 'Release',
     onChange: (value) => synthEngine.setRelease(value)
   });
-  synthEngine.setRelease(0.1);
+  synthEngine.setRelease(1.0);
 
-  // Add Filter Envelope Knobs
+  // Add Filter Envelope Knobs with Tone.js defaults
   const filterAttackKnob = new Knob({
-    min: 0.01, max: 2.0, value: 0.01,
+    min: 0.001, max: 2.0, value: 0.06,   // Default 0.06
     label: 'F.Attack',
     onChange: (value) => synthEngine.setFilterAttack(value)
   });
-  synthEngine.setFilterAttack(0.01);
+  synthEngine.setFilterAttack(0.06);
 
   const filterDecayKnob = new Knob({
-    min: 0.01, max: 2.0, value: 0.1,
+    min: 0.001, max: 2.0, value: 0.2,    // Default 0.2
     label: 'F.Decay',
     onChange: (value) => synthEngine.setFilterDecay(value)
   });
-  synthEngine.setFilterDecay(0.1);
+  synthEngine.setFilterDecay(0.2);
 
   const filterSustainKnob = new Knob({
-    min: 0, max: 1.0, value: 1.0,
+    min: 0, max: 1.0, value: 0.5,        // Default 0.5
     label: 'F.Sustain',
     onChange: (value) => synthEngine.setFilterSustain(value)
   });
-  synthEngine.setFilterSustain(1.0);
+  synthEngine.setFilterSustain(0.5);
 
   const filterReleaseKnob = new Knob({
-    min: 0.01, max: 3.0, value: 0.1,
+    min: 0.001, max: 4.0, value: 2.0,    // Default 2.0
     label: 'F.Release',
     onChange: (value) => synthEngine.setFilterRelease(value)
   });
-  synthEngine.setFilterRelease(0.1);
+  synthEngine.setFilterRelease(2.0);
 
   // const distortionKnob = new Knob({
   //   min: 0, max: 1, value: 0,
@@ -389,6 +389,20 @@ export function createSynthUI(container, synthEngine, looperRef) {
   mainControls.appendChild(filterEnvelopeGroup);
   mainControls.appendChild(glideKnob.container);
 
+  // Create sub-group for wave and performance controls
+  const waveAndPerformanceGroup = document.createElement('div');
+  waveAndPerformanceGroup.className = 'wave-performance-group';
+
+  waveSelectContainer.className = 'wave-selector';
+  performanceControls.className = 'performance-controls';
+  
+  waveAndPerformanceGroup.appendChild(waveSelectContainer);
+  waveAndPerformanceGroup.appendChild(performanceControls);
+  
+  // Core synth controls section
+  mainControls.appendChild(waveAndPerformanceGroup);
+  mainControls.appendChild(coreKnobsGroup);
+
   // Modulation controls section
   [
     vibratoRateKnob,
@@ -408,10 +422,26 @@ export function createSynthUI(container, synthEngine, looperRef) {
     reverbMixKnob
   ].forEach(knob => timeEffectsControls.appendChild(knob.container));
 
+  // Create effects row container
+  const effectsRow = document.createElement('div');
+  effectsRow.className = 'effects-row';
+  effectsRow.appendChild(modulationControls);
+  effectsRow.appendChild(timeEffectsControls);
+
   // Add all control groups to main container
   controlsContainer.appendChild(mainControls);
-  controlsContainer.appendChild(modulationControls);
-  controlsContainer.appendChild(timeEffectsControls);
+  controlsContainer.appendChild(effectsRow);
 
+  // Add controls toggle button
+  const controlsToggleBtn = document.createElement('button');
+  controlsToggleBtn.textContent = 'Show Controls';
+  controlsToggleBtn.className = 'controls-toggle-btn';
+  controlsToggleBtn.addEventListener('click', () => {
+    controlsContainer.classList.toggle('hidden');
+    controlsToggleBtn.textContent = controlsContainer.classList.contains('hidden') ? 'Show Controls' : 'Hide Controls';
+  });
+
+  // Add toggle button first, then controls
+  container.appendChild(controlsToggleBtn);
   container.appendChild(controlsContainer);
 }

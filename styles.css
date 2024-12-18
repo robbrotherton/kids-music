@@ -216,129 +216,101 @@ h1 {
 }
 
 .controls-container {
-  width: fit-content;
+  width: fit-content;  /* Take full width */
   display: flex;
-  flex-direction: row;
+  flex-direction: column;  /* Stack main row and effects row */
   gap: 10px;
   padding: 15px;
   background: #2a2a2a;
   border-radius: 10px;
   margin-top: 20px;
+  transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+  max-height: 1000px;
+  opacity: 1;
+  overflow: hidden;
 }
 
-/* Each control group takes equal width */
+.controls-container.hidden {
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+  margin: 0;
+}
+
+/* Each control group now takes full width */
 .control-group {
-  flex: 1;
-  width: 33.33%; /* Force equal width */
-  min-width: 250px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;  /* Horizontal layout */
+  align-items: center;
   gap: 15px;
   padding: 20px;
   border-radius: 8px;
   position: relative;
 }
 
-/* Core section styles */
+/* Main controls is now a row */
 .main-controls {
   background: #333;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  padding: 15px;
+  width: 100%;
+  justify-content: flex-start;
+  gap: 20px;
 }
 
-/* New sub-group for core knob controls */
-.core-knobs-group {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding: 15px;
-  background: #3a3a3a;
-  border-radius: 6px;
-  margin-top: 10px;
-}
-
-/* New sub-group for envelope controls */
-.envelope-group {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  padding: 15px;
-  background: #3a3a3a;
-  border-radius: 6px;
-  margin-top: 10px;
-}
-
-/* Ensure envelope knobs are properly sized */
-.envelope-group .knob-container {
-  min-width: 50px;
-  max-width: 80px;
-}
-
-/* New sub-group for filter envelope controls */
+/* All subgroups are now horizontal */
+.core-knobs-group,
+.envelope-group,
 .filter-envelope-group {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-direction: row;
   gap: 10px;
   padding: 15px;
   background: #3a3a3a;
   border-radius: 6px;
-  margin-top: 10px;
+  margin: 0;
+  flex-shrink: 0;  /* Prevent shrinking */
 }
 
-/* Ensure filter envelope knobs are properly sized */
-.filter-envelope-group .knob-container {
-  min-width: 50px;
-  max-width: 80px;
-}
-
-/* Modulation section styles */
-.modulation-controls {
-  background: #2d2d2d;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-}
-
-/* Time effects section styles */
-.time-effects-controls {
-  background: #282828;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  align-content: start;
-}
-
-/* Main controls span full width */
-.main-controls {
-  flex: 1 1 250px; /* narrower width for column layout */
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  background: #333;
-  padding: 15px;
-  min-width: 200px;
-}
-
-/* Wave selector and performance controls fill width */
+/* Wave selector and performance controls */
 .wave-selector,
 .performance-controls {
-  width: 100%;
   display: flex;
-  justify-content: flex-start;
-  padding: 10px;
+  flex-direction: row;
   gap: 10px;
+  padding: 10px;
+  background: #383838;
+  border-radius: 6px;
+  flex-shrink: 0;
 }
 
-/* Specific 2x3 grid for modulation */
-.modulation-controls {
-  flex: 1 1 400px; /* wider to accommodate 2 columns */
-  display: grid;
-  grid-template-columns: repeat(2, 1fr); /* force 2 columns */
-  grid-template-rows: repeat(3, 1fr); /* force 3 rows */
-  gap: 15px;
+/* Effects row container */
+.effects-row {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Modulation and time effects as rows */
+.modulation-controls,
+.time-effects-controls {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  gap: 10px;
   padding: 15px;
+}
+
+.modulation-controls {
   background: #2d2d2d;
+}
+
+.time-effects-controls {
+  background: #282828;
+}
+
+/* Ensure knob containers have consistent size */
+.knob-container {
+  /* flex-shrink: 0; */
 }
 
 /* Keep other control groups flexible */
@@ -481,4 +453,52 @@ h1 {
 .knob-value {
   font-size: 9px;
   color: #999;
+}
+
+.controls-toggle-btn {
+  margin: 10px;
+  padding: 8px 15px;
+  background: #444;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.controls-toggle-btn:hover {
+  background: #555;
+}
+
+/* New wave and performance controls group */
+.wave-performance-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px;
+  background: #3a3a3a;
+  border-radius: 6px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* Update wave selector to fill width */
+.wave-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 8px;
+  background: #383838;
+  border-radius: 6px;
+  width: 100%;
+}
+
+/* Update performance controls to fill width */
+.performance-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px;
+  background: #383838;
+  border-radius: 6px;
+  width: 100%;
 }

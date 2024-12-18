@@ -23,7 +23,7 @@ export class Knob {
     
     this.container.appendChild(labelEl);
     this.container.appendChild(this.knobEl);
-    // this.container.appendChild(this.valueEl);
+    this.container.appendChild(this.valueEl);
     
     this.setupEvents();
     this.updateRotation();

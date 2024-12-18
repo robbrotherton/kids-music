@@ -4,16 +4,16 @@ export class SynthEngine {
     this.voices = Array(3).fill().map(() => new Tone.MonoSynth({
       oscillator: { type: 'sine' },
       envelope: {
-        attack: 0.01,
-        decay: 0.1,
-        sustain: 0.7,
-        release: 0.1
+        attack: 0.005,  // Default
+        decay: 0.1,     // Default
+        sustain: 0.9,   // Default
+        release: 1      // Default
       },
       filterEnvelope: {
-        attack: 0.01,
-        decay: 0.2,
-        sustain: 0.5,
-        release: 0.2,
+        attack: 0.06,   // Default
+        decay: 0.2,     // Default
+        sustain: 0.5,   // Default
+        release: 2,     // Default
         baseFrequency: 200,    // Start from a lower frequency
         octaves: 7,            // Sweep through more octaves
         exponent: 2            // More dramatic exponential sweep
