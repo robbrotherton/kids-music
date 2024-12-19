@@ -64,6 +64,7 @@ export class Looper {
   stop() {
     this.isLooping = false;
     this.isPaused = true;
+    this.isRecording = false;  // Add this line to stop recording
     this.currentStep = 0;
     Tone.Transport.stop();  // Changed from pause() to stop()
     Tone.Transport.position = 0;  // Reset transport position
