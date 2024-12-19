@@ -80,14 +80,30 @@ export function createSynthUI(container, synthEngine, looperRef) {
   const keysContainer = document.createElement('div');
   keysContainer.className = 'synth-keys-container';
 
-  displayedNotes.forEach((noteInfo, i) => {
+  // First create and position all white keys
+  const whiteKeys = displayedNotes.filter(noteInfo => !noteInfo.note.includes('#'));
+  whiteKeys.forEach((noteInfo) => {
     const keyEl = document.createElement('div');
     keyEl.classList.add('synth-key');
-    if (noteInfo.note.includes('#')) {
-      keyEl.classList.add('black-key');
-    }
     keyEl.textContent = noteInfo.note;
+    keyEl.dataset.midiNote = noteInfo.midiNote;
+    keysContainer.appendChild(keyEl);
+  });
 
+  // Then create and position all black keys
+  const blackKeys = displayedNotes.filter(noteInfo => noteInfo.note.includes('#'));
+  blackKeys.forEach((noteInfo) => {
+    const keyEl = document.createElement('div');
+    keyEl.classList.add('synth-key', 'black-key');
+    keyEl.textContent = noteInfo.note;
+    keyEl.dataset.midiNote = noteInfo.midiNote;
+    keyEl.dataset.note = noteInfo.note; // Add this for CSS positioning
+    
+    keysContainer.appendChild(keyEl);
+  });
+
+  // Add event listeners to all keys
+  keysContainer.querySelectorAll('.synth-key').forEach(keyEl => {
     keyEl.addEventListener('pointerdown', async e => {
       e.preventDefault();
       keyEl.setPointerCapture(e.pointerId);
@@ -97,13 +113,12 @@ export function createSynthUI(container, synthEngine, looperRef) {
         await Tone.start();
       }
 
-      startNote(keyEl, noteInfo.midiNote);
+      startNote(keyEl, parseInt(keyEl.dataset.midiNote));
       if (looperRef?.isLooping) {
         startStep = looperRef.currentStep;
       }
     });
 
-    // Modify the looper record section in the pointerup event listener
     keyEl.addEventListener('pointerup', e => {
       e.preventDefault();
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
@@ -152,16 +167,14 @@ export function createSynthUI(container, synthEngine, looperRef) {
       if (e.buttons > 0 && e.currentTarget.hasPointerCapture(e.pointerId)) {
         const targetKey = document.elementFromPoint(e.clientX, e.clientY);
         if (targetKey?.classList.contains('synth-key') && targetKey !== activeKey) {
-          // Use keysContainer.children instead of container.children
-          startNote(targetKey, displayedNotes[Array.from(keysContainer.children).indexOf(targetKey)].midiNote);
+          // Get the actual MIDI note from the dataset
+          const targetMidiNote = parseInt(targetKey.dataset.midiNote);
+          startNote(targetKey, targetMidiNote);
         }
       }
     });
-
-    keysContainer.appendChild(keyEl);  // Append to keysContainer instead of main container
   });
 
-  
   // Create wrapper for entire synth
   const synthWrapper = document.createElement('div');
   synthWrapper.className = 'synth-wrapper';

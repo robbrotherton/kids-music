@@ -100,23 +100,58 @@ h1 {
   display: grid;  /* show grid when active */
 }
 
-.synth-key {
-  width: auto;
+.synth-keys-container {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
   height: 200px;
-  color: black;
-  background: #fff;
-  border: 3px solid black;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+  margin: 20px;
+  width: 100%;
+  max-width: 800px;
   user-select: none;
-  touch-action: none;
 }
+
+.synth-key {
+  position: relative;
+  height: 100%;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 0 0 4px 4px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 10px;
+  color: black;
+  cursor: pointer;
+  touch-action: none;
+  z-index: 1;
+}
+
+.synth-key.black-key {
+  position: absolute;
+  top: 0;
+  width: calc(100% / 7 * 0.7); /* 70% of a white key width */
+  height: 60%;
+  background: #222;
+  color: white;
+  border: 1px solid #000;
+  border-radius: 0 0 2px 2px;
+  z-index: 2;
+}
+
+/* Position black keys using grid column positions */
+.synth-key.black-key[data-note="C#"] { left: calc(100% / 7 * 0.85); }  /* After C */
+.synth-key.black-key[data-note="D#"] { left: calc(100% / 7 * 1.85); }  /* After D */
+.synth-key.black-key[data-note="F#"] { left: calc(100% / 7 * 3.85); }  /* After F */
+.synth-key.black-key[data-note="G#"] { left: calc(100% / 7 * 4.85); }  /* After G */
+.synth-key.black-key[data-note="A#"] { left: calc(100% / 7 * 5.85); }  /* After A */
 
 .synth-key.active {
   background: #ff5722;
+}
+
+.synth-key.black-key.active {
+  background: #ff7043;
 }
 
 .looper-controls {
