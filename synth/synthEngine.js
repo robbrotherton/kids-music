@@ -23,7 +23,9 @@ export class SynthEngine {
         rolloff: -24,          // Steeper filter slope
         type: 'lowpass'
       },
-      volume: -6
+      volume: -6,
+      portamento: 0, // Add initial portamento time
+      portamentoType: 'linear' // Add this to ensure glide type is set
     }));
 
     // Update filter settings for more dramatic sweep
@@ -99,6 +101,9 @@ export class SynthEngine {
         decay: { param: 'decay', target: 'filterEnvelope', voiceParam: true },
         sustain: { param: 'sustain', target: 'filterEnvelope', voiceParam: true },
         release: { param: 'release', target: 'filterEnvelope', voiceParam: true }
+      },
+      portamento: {
+        time: { param: 'portamento', target: 'voices', voiceParam: true }
       }
     };
   }
@@ -266,8 +271,13 @@ export class SynthEngine {
 
     // Handle voice parameters
     if (config.voiceParam) {
+      console.log(`Setting voice parameter ${config.param} to ${value}`); // Debug
       this.voices.forEach(voice => {
-        voice.set({ [config.target]: { [config.param]: value } });
+        if (config.target === 'voices') {
+          voice[config.param] = value;
+        } else {
+          voice.set({ [config.target]: { [config.param]: value } });
+        }
       });
       return;
     }
@@ -358,6 +368,12 @@ export class SynthEngine {
   setFilterSustain(level) { this.setParameter('filterEnvelope', 'sustain', level); }
   setFilterRelease(time) { this.setParameter('filterEnvelope', 'release', time); }
 
+  // Add portamento setter
+  setPortamento(time) { 
+    this.setParameter('portamento', 'time', time);
+    console.log('Setting portamento:', time); // Add debug logging
+  }
+
   setLooperRef(looperRef) {
     this.looperRef = looperRef;
   }
@@ -371,13 +387,23 @@ export class SynthEngine {
     // Convert base frequency to note number
     const baseNote = Tone.Frequency(freq).toMidi();
     
-    // Find available voice
-    const voice = this.voices.find(v => !this.activeVoices.has(v));
+    // Try to reuse the same voice for consecutive notes to make glide work
+    let voice = this.voices.find(v => {
+      const voiceFreq = this.activeVoices.get(v);
+      return voiceFreq === undefined || voiceFreq === freq;
+    });
+    
+    // If no reusable voice found, find any free voice
+    if (!voice) {
+      voice = this.voices.find(v => !this.activeVoices.has(v));
+    }
+
     if (voice) {
-      // Calculate actual frequency including octave offsets
       const actualFreq = Tone.Frequency(baseNote, "midi").toFrequency();
+      // Use triggerAttack for glide between notes
       voice.triggerAttack(actualFreq, time);
       this.activeVoices.set(voice, freq);
+      console.log('Note on:', freq, 'Portamento:', voice.portamento); // Debug
     }
   }
 

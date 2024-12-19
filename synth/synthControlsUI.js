@@ -56,7 +56,8 @@ export function createSynthControlsUI(synthEngine, container) {
                         {
                             label: 'Glide',
                             min: 0, max: 0.5, value: 0,
-                            effect: 'portamento', param: 'time'
+                            effect: 'portamento', param: 'time',
+                            initialize: true
                         }
                     ]
                 },
@@ -123,9 +124,13 @@ export function createSynthControlsUI(synthEngine, container) {
             ...config,
             onChange: config.onChange || (config.special ? 
                 (value) => synthEngine.setDistortionAmount(value) :
-                (value) => synthEngine.setParameter(config.effect, config.param, value))
+                (value) => {
+                    console.log(`Setting ${config.effect}.${config.param} to ${value}`); // Debug logging
+                    synthEngine.setParameter(config.effect, config.param, value);
+                })
         });
         
+        // Initialize the parameter if needed
         if (config.initialize) {
             synthEngine.setParameter(config.effect, config.param, config.value);
         }
