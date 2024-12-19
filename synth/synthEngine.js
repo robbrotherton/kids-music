@@ -1,32 +1,35 @@
 export class SynthEngine {
   constructor() {
-    // Create multiple MonoSynths for polyphony
-    this.voices = Array(7).fill().map(() => new Tone.MonoSynth({ // Increase to 7 voices
+    this.voicePool = new Map(); // Replace Array with Map for voice management
+    this.activeVoices = new Map();
+    this.maxVoices = 32; // Safety limit
+    this.chordSize = 1;
+    this.voiceConfig = {
       oscillator: { type: 'sine' },
       envelope: {
-        attack: 0.005,  // Default
-        decay: 0.1,     // Default
-        sustain: 0.9,   // Default
-        release: 1      // Default
+        attack: 0.005,
+        decay: 0.1,
+        sustain: 0.9,
+        release: 1
       },
       filterEnvelope: {
-        attack: 0.06,   // Default
-        decay: 0.2,     // Default
-        sustain: 0.5,   // Default
-        release: 2,     // Default
-        baseFrequency: 200,    // Start from a lower frequency
-        octaves: 7,            // Sweep through more octaves
-        exponent: 2            // More dramatic exponential sweep
+        attack: 0.06,
+        decay: 0.2,
+        sustain: 0.5,
+        release: 2,
+        baseFrequency: 200,
+        octaves: 7,
+        exponent: 2
       },
       filter: {
-        Q: 6,                  // More resonance
-        rolloff: -24,          // Steeper filter slope
+        Q: 6,
+        rolloff: -24,
         type: 'lowpass'
       },
       volume: -6,
-      portamento: 0, // Add initial portamento time
-      portamentoType: 'linear' // Add this to ensure glide type is set
-    }));
+      portamento: 0,
+      portamentoType: 'linear'
+    };
 
     // Update filter settings for more dramatic sweep
     this.filter = new Tone.Filter({
@@ -36,9 +39,6 @@ export class SynthEngine {
       rolloff: -24
     }).toDestination();
     
-    // Connect all voices to the filter
-    this.voices.forEach(voice => voice.connect(this.filter));
-
     this.chordSize = 1; // Replace chordMode with chordSize
     this.looperRef = null;
     this.activeVoices = new Map(); // Track which voice is playing which note
@@ -175,18 +175,8 @@ export class SynthEngine {
 
     this.wahLFO.start();
 
-    // Reorder the chain to ensure tremolo is affecting amplitude properly
-    this.voices.forEach(voice => voice.disconnect());
-    this.voices.forEach(voice => voice.chain(
-      this.tremolo,      // Use new tremolo effect
-      this.vibrato,
-      this.wahFilter,
-      this.distortion,
-      this.distortionCompensation,
-      this.delay,
-      this.reverb,
-      this.filter
-    ));
+    // No need to chain anything here - voices will be connected when created
+    // in getOrCreateVoice method
 
     // Make sure all effects start clean
     this.resetEffects();
@@ -208,7 +198,13 @@ export class SynthEngine {
   }
 
   cleanup() {
-    this.voices.forEach(voice => voice.disconnect());
+    // Cleanup all voices
+    for (const [id, voice] of this.voicePool) {
+      voice.dispose();
+    }
+    this.voicePool.clear();
+    this.activeVoices.clear();
+    
     this.tremolo.dispose();
     this.delay.disconnect();
     this.reverb.disconnect();
@@ -222,16 +218,16 @@ export class SynthEngine {
   }
 
   setWaveform(wave) {
-    this.voices.forEach(voice => 
-      voice.set({ oscillator: { type: wave } })
-    );
+    for (const [id, voice] of this.voicePool) {
+      voice.set({ oscillator: { type: wave } });
+    }
   }
 
   setVolume(vol) {
     const dbValue = Tone.gainToDb(vol);
-    this.voices.forEach(voice => 
-      voice.volume.linearRampToValueAtTime(dbValue, Tone.now() + 0.1)
-    );
+    for (const [id, voice] of this.voicePool) {
+      voice.volume.linearRampToValueAtTime(dbValue, Tone.now() + 0.1);
+    }
   }
 
   setCutoffFrequency(freq) {
@@ -272,13 +268,13 @@ export class SynthEngine {
     // Handle voice parameters
     if (config.voiceParam) {
       console.log(`Setting voice parameter ${config.param} to ${value}`); // Debug
-      this.voices.forEach(voice => {
+      for (const [id, voice] of this.voicePool) {
         if (config.target === 'voices') {
           voice[config.param] = value;
         } else {
           voice.set({ [config.target]: { [config.param]: value } });
         }
-      });
+      }
       return;
     }
 
@@ -379,38 +375,67 @@ export class SynthEngine {
   }
 
   stopAllOscillators() {
-    this.voices.forEach(voice => voice.triggerRelease());
+    for (const [id, voice] of this.voicePool) {
+      voice.triggerRelease();
+    }
     this.activeVoices.clear();
   }
 
+  // Create a new voice or recycle an inactive one
+  getOrCreateVoice() {
+    // Try to find an inactive voice first
+    for (const [id, voice] of this.voicePool) {
+      if (!this.activeVoices.has(voice)) {
+        return voice;
+      }
+    }
+
+    // Create new voice if under limit
+    if (this.voicePool.size < this.maxVoices) {
+      const voice = new Tone.MonoSynth(this.voiceConfig);
+      const id = `voice_${this.voicePool.size}`;
+      this.voicePool.set(id, voice);
+      
+      // Connect new voice to effects chain when it's created
+      voice.chain(
+        this.tremolo,
+        this.vibrato,
+        this.wahFilter,
+        this.distortion,
+        this.distortionCompensation,
+        this.delay,
+        this.reverb,
+        this.filter
+      );
+
+      return voice;
+    }
+
+    // If at limit, find oldest voice
+    return Array.from(this.activeVoices.entries())
+      .sort(([, a], [, b]) => a.timestamp - b.timestamp)[0]?.[0];
+  }
+
   noteOn(freq, time = undefined) {
-    // Convert base frequency to note number
     const baseNote = Tone.Frequency(freq).toMidi();
     
-    // Try to reuse the same voice for consecutive notes to make glide work
-    let voice = this.voices.find(v => {
-      const voiceFreq = this.activeVoices.get(v);
-      return voiceFreq === undefined || voiceFreq === freq;
-    });
-    
-    // If no reusable voice found, find any free voice
-    if (!voice) {
-      voice = this.voices.find(v => !this.activeVoices.has(v));
-    }
+    // Try to reuse voice playing this frequency or get new one
+    let voice = Array.from(this.activeVoices.entries())
+      .find(([, data]) => data.freq === freq)?.[0] || this.getOrCreateVoice();
 
     if (voice) {
       const actualFreq = Tone.Frequency(baseNote, "midi").toFrequency();
-      // Use triggerAttack for glide between notes
       voice.triggerAttack(actualFreq, time);
-      this.activeVoices.set(voice, freq);
-      console.log('Note on:', freq, 'Portamento:', voice.portamento); // Debug
+      this.activeVoices.set(voice, { 
+        freq,
+        timestamp: Date.now()
+      });
     }
   }
 
   noteOff(freq, time = undefined) {
-    // Find and release the voice playing this frequency
-    for (const [voice, voiceFreq] of this.activeVoices) {
-      if (voiceFreq === freq) {
+    for (const [voice, data] of this.activeVoices) {
+      if (data.freq === freq) {
         voice.triggerRelease(time);
         this.activeVoices.delete(voice);
         break;
