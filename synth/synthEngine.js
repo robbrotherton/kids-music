@@ -40,6 +40,67 @@ export class SynthEngine {
     this.chordSize = 1; // Replace chordMode with chordSize
     this.looperRef = null;
     this.activeVoices = new Map(); // Track which voice is playing which note
+
+    // Define effect parameter configurations
+    this.effectConfigs = {
+      tremolo: {
+        rate: { param: 'frequency', target: 'tremolo' },
+        depth: { 
+          param: 'depth', 
+          target: 'tremolo',
+          wetControl: true 
+        }
+      },
+      vibrato: {
+        rate: { param: 'frequency', target: 'vibrato' },
+        depth: { 
+          param: 'depth', 
+          target: 'vibrato',
+          wetControl: true,
+          scale: 2 // Double the depth
+        }
+      },
+      delay: {
+        time: { param: 'delayTime', target: 'delay' },
+        feedback: { param: 'feedback', target: 'delay' },
+        mix: { param: 'wet', target: 'delay' }
+      },
+      reverb: {
+        size: { 
+          param: 'decay', 
+          target: 'reverb',
+          special: 'reverbDecay' // Special handling required
+        },
+        mix: { param: 'wet', target: 'reverb' }
+      },
+      wah: {
+        rate: { 
+          param: 'frequency', 
+          target: 'wahLFO' 
+        },
+        depth: { 
+          param: 'depth', 
+          target: 'wahFilter',
+          special: 'wahDepth' // Special handling required
+        }
+      },
+      filter: {
+        frequency: { param: 'frequency', target: 'filter' },
+        Q: { param: 'Q', target: 'filter' }
+      },
+      envelope: {
+        attack: { param: 'attack', target: 'envelope', voiceParam: true },
+        decay: { param: 'decay', target: 'envelope', voiceParam: true },
+        sustain: { param: 'sustain', target: 'envelope', voiceParam: true },
+        release: { param: 'release', target: 'envelope', voiceParam: true }
+      },
+      filterEnvelope: {
+        attack: { param: 'attack', target: 'filterEnvelope', voiceParam: true },
+        decay: { param: 'decay', target: 'filterEnvelope', voiceParam: true },
+        sustain: { param: 'sustain', target: 'filterEnvelope', voiceParam: true },
+        release: { param: 'release', target: 'filterEnvelope', voiceParam: true }
+      }
+    };
   }
 
   async initialize() {
@@ -191,40 +252,63 @@ export class SynthEngine {
     this.setVolume(vol);
   }
 
-  setTremoloRate(rate) {
-    this.tremolo.frequency.value = rate;
-  }
+  // Generic parameter setter
+  setParameter(effect, paramName, value, time = 0.1) {
+    const config = this.effectConfigs[effect]?.[paramName];
+    if (!config) return;
 
-  setTremoloDepth(depth) {
-    this.tremolo.depth.value = depth;
-    this.tremolo.wet.value = depth === 0 ? 0 : 1;
-  }
-
-  setVibratoRate(rate) {
-    this.vibrato.frequency.linearRampToValueAtTime(rate, Tone.now() + 0.1);
-  }
-
-  setVibratoDepth(depth) {
     const now = Tone.now();
-    // Double the depth for more dramatic effect
-    this.vibrato.depth.linearRampToValueAtTime(depth * 2, now + 0.1);
-    this.vibrato.wet.linearRampToValueAtTime(depth === 0 ? 0 : 1, now + 0.1);
+
+    // Handle special cases
+    if (config.special) {
+      return this[config.special](value);
+    }
+
+    // Handle voice parameters
+    if (config.voiceParam) {
+      this.voices.forEach(voice => {
+        voice.set({ [config.target]: { [config.param]: value } });
+      });
+      return;
+    }
+
+    // Get target effect
+    const target = this[config.target];
+    if (!target) return;
+
+    // Apply scaling if specified
+    const scaledValue = config.scale ? value * config.scale : value;
+
+    // Handle parameters with wet control
+    if (config.wetControl) {
+      target[config.param].linearRampToValueAtTime(scaledValue, now + time);
+      target.wet.linearRampToValueAtTime(value === 0 ? 0 : 1, now + time);
+      return;
+    }
+
+    // Standard parameter setting
+    if (target[config.param]?.linearRampToValueAtTime) {
+      target[config.param].linearRampToValueAtTime(scaledValue, now + time);
+    } else {
+      target[config.param] = scaledValue;
+    }
   }
 
-  setDelayTime(time) {
-    this.delay.delayTime.linearRampToValueAtTime(time, Tone.now() + 0.1);
+  // Special case handlers remain the same
+  setDistortionAmount(amount) {
+    const now = Tone.now();
+    // Scale distortion based on chord size
+    const scaledAmount = amount / Math.sqrt(this.chordSize);  // Square root for gentler scaling
+    this.distortion.distortion = scaledAmount * 2;
+    this.distortion.wet.linearRampToValueAtTime(amount === 0 ? 0 : 1, now + 0.1);
+    
+    // Also scale compensation gain based on chord size
+    const compensationDb = -6 * scaledAmount;
+    const compensationGain = Tone.dbToGain(compensationDb);
+    this.distortionCompensation.gain.linearRampToValueAtTime(compensationGain, now + 0.1);
   }
 
-  setDelayFeedback(fb) {
-    this.delay.feedback.linearRampToValueAtTime(fb, Tone.now() + 0.1);
-  }
-
-  setDelayWet(wet) {
-    this.delay.wet.linearRampToValueAtTime(wet, Tone.now() + 0.1);
-  }
-
-  setReverbDecay(decay) {
-    // Can't ramp reverb decay, but we can ramp its wet value during changes
+  reverbDecay(decay) {
     const currentWet = this.reverb.wet.value;
     const now = Tone.now();
     this.reverb.wet.linearRampToValueAtTime(0, now + 0.1);
@@ -234,9 +318,45 @@ export class SynthEngine {
     }, 100);
   }
 
-  setReverbWet(wet) {
-    this.reverb.wet.linearRampToValueAtTime(wet, Tone.now() + 0.1);
+  wahDepth(depth) {
+    if (depth === 0) {
+      this.wahLFO.min = 800;
+      this.wahLFO.max = 800;
+    } else {
+      const minFreq = 200;
+      const maxFreq = minFreq + (5000 * depth);
+      this.wahLFO.min = minFreq;
+      this.wahLFO.max = maxFreq;
+      this.wahFilter.Q.value = 5 + (depth * 15);
+    }
   }
+
+  // Replace individual setters with generic setter calls
+  setTremoloRate(rate) { this.setParameter('tremolo', 'rate', rate); }
+  setTremoloDepth(depth) { this.setParameter('tremolo', 'depth', depth); }
+  setVibratoRate(rate) { this.setParameter('vibrato', 'rate', rate); }
+  setVibratoDepth(depth) { this.setParameter('vibrato', 'depth', depth); }
+  setDelayTime(time) { this.setParameter('delay', 'time', time); }
+  setDelayFeedback(fb) { this.setParameter('delay', 'feedback', fb); }
+  setDelayWet(wet) { this.setParameter('delay', 'mix', wet); }
+  setReverbDecay(decay) { this.setParameter('reverb', 'size', decay); }
+  setReverbWet(wet) { this.setParameter('reverb', 'mix', wet); }
+  setWahRate(rate) { this.setParameter('wah', 'rate', rate); }
+  setWahDepth(depth) { this.setParameter('wah', 'depth', depth); }
+  setFilterQ(q) { this.setParameter('filter', 'Q', q); }
+  setFilterFrequency(freq) { this.setParameter('filter', 'frequency', freq); }
+  
+  // Envelope setters
+  setAttack(time) { this.setParameter('envelope', 'attack', time); }
+  setDecay(time) { this.setParameter('envelope', 'decay', time); }
+  setSustain(level) { this.setParameter('envelope', 'sustain', level); }
+  setRelease(time) { this.setParameter('envelope', 'release', time); }
+  
+  // Filter envelope setters
+  setFilterAttack(time) { this.setParameter('filterEnvelope', 'attack', time); }
+  setFilterDecay(time) { this.setParameter('filterEnvelope', 'decay', time); }
+  setFilterSustain(level) { this.setParameter('filterEnvelope', 'sustain', level); }
+  setFilterRelease(time) { this.setParameter('filterEnvelope', 'release', time); }
 
   setLooperRef(looperRef) {
     this.looperRef = looperRef;
@@ -272,103 +392,6 @@ export class SynthEngine {
     }
   }
 
-  setWahRate(rate) {
-    this.wahLFO.frequency.linearRampToValueAtTime(rate, Tone.now() + 0.1);
-  }
-
-  setWahDepth(depth) {
-    const now = Tone.now();
-    if (depth === 0) {
-      this.wahLFO.min = 800;
-      this.wahLFO.max = 800;
-    } else {
-      // Much wider frequency range for more dramatic wah
-      const minFreq = 200;
-      const maxFreq = minFreq + (5000 * depth);  // max 5200Hz at full depth
-      this.wahLFO.min = minFreq;
-      this.wahLFO.max = maxFreq;
-      
-      // More resonance for more pronounced wah
-      this.wahFilter.Q.value = 5 + (depth * 15); // Q ranges from 5 to 20
-    }
-  }
-
-  setAttack(time) {
-    this.voices.forEach(voice => 
-      voice.set({ envelope: { attack: time } })
-    );
-  }
-
-  setDecay(time) {
-    this.voices.forEach(voice => 
-      voice.set({ envelope: { decay: time } })
-    );
-  }
-
-  setSustain(level) {
-    this.voices.forEach(voice => 
-      voice.set({ envelope: { sustain: level } })
-    );
-  }
-
-  setRelease(time) {
-    this.voices.forEach(voice => 
-      voice.set({ envelope: { release: time } })
-    );
-  }
-
-  setFilterAttack(time) {
-    this.voices.forEach(voice => 
-      voice.set({ filterEnvelope: { attack: time } })
-    );
-  }
-
-  setFilterDecay(time) {
-    this.voices.forEach(voice => 
-      voice.set({ filterEnvelope: { decay: time } })
-    );
-  }
-
-  setFilterSustain(level) {
-    this.voices.forEach(voice => 
-      voice.set({ filterEnvelope: { sustain: level } })
-    );
-  }
-
-  setFilterRelease(time) {
-    this.voices.forEach(voice => 
-      voice.set({ filterEnvelope: { release: time } })
-    );
-  }
-
-  setDistortionAmount(amount) {
-    const now = Tone.now();
-    // Scale distortion based on chord size
-    const scaledAmount = amount / Math.sqrt(this.chordSize);  // Square root for gentler scaling
-    this.distortion.distortion = scaledAmount * 2;
-    this.distortion.wet.linearRampToValueAtTime(amount === 0 ? 0 : 1, now + 0.1);
-    
-    // Also scale compensation gain based on chord size
-    const compensationDb = -6 * scaledAmount;
-    const compensationGain = Tone.dbToGain(compensationDb);
-    this.distortionCompensation.gain.linearRampToValueAtTime(compensationGain, now + 0.1);
-  }
-
-  setPortamento(time) {
-    this.voices.forEach(voice => 
-      voice.set({ portamento: time })
-    );
-  }
-
-  setFilterFrequency(freq) {
-    this.filter.frequency.setValueAtTime(freq, Tone.now());
-  }
-  
-  setFilterQ(q) {
-    this.filter.Q.setValueAtTime(q, Tone.now());
-  }
-
-  // Add new method
   setChordSize(size) {
     this.chordSize = Math.max(1, Math.min(7, Math.floor(size)));
   }
