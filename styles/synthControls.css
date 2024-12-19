@@ -1,5 +1,6 @@
 .waveform-icon {
     filter: invert();
+    width: 2.5em;
   }
   
   .waveform-label {
@@ -12,22 +13,18 @@
     margin-right: 10px;
   }
   
-  .waveform-icon {
-    width: 24px;
-    height: 24px;
-    filter: invert();
-  }
-  
   .waveform-label input[type="radio"] {
     display: none;
   }
   
   .waveform-label input[type="radio"]+.waveform-icon {
-    border: none;
+    border: 1px solid black;
   }
   
   .waveform-label input[type="radio"]:checked+.waveform-icon {
-    border: 2px solid rgb(78, 78, 78);
+    border: 2px solid white;
+    background: rgb(252, 247, 219);
+    filter: unset;
   }
   
   .controls-container {
