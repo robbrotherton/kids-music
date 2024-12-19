@@ -104,6 +104,9 @@ export class SynthEngine {
       },
       portamento: {
         time: { param: 'portamento', target: 'voices', voiceParam: true }
+      },
+      volume: {
+        level: { param: 'volume', target: 'voices', voiceParam: true }
       }
     };
   }
@@ -224,10 +227,7 @@ export class SynthEngine {
   }
 
   setVolume(vol) {
-    const dbValue = Tone.gainToDb(vol);
-    for (const [id, voice] of this.voicePool) {
-      voice.volume.linearRampToValueAtTime(dbValue, Tone.now() + 0.1);
-    }
+    this.setParameter('volume', 'level', vol);
   }
 
   setCutoffFrequency(freq) {
@@ -270,7 +270,12 @@ export class SynthEngine {
       console.log(`Setting voice parameter ${config.param} to ${value}`); // Debug
       for (const [id, voice] of this.voicePool) {
         if (config.target === 'voices') {
-          voice[config.param] = value;
+          if (config.param === 'volume') {
+            const dbValue = Tone.gainToDb(value);
+            voice.volume.linearRampToValueAtTime(dbValue, Tone.now() + 0.1);
+          } else {
+            voice[config.param] = value;
+          }
         } else {
           voice.set({ [config.target]: { [config.param]: value } });
         }
