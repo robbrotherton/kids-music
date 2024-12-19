@@ -1,4 +1,5 @@
-import { buildChordIndices } from './chordLogic.js';
+import { NoteModel } from './noteModel.js';
+import { buildChord } from './chordLogic.js';
 import { createSynthControlsUI } from './synthControlsUI.js';
 
 /**
@@ -6,27 +7,23 @@ import { createSynthControlsUI } from './synthControlsUI.js';
  * uses a provided synthEngine to produce sound, integrates w/ looper if provided.
  */
 export function createSynthUI(container, synthEngine, looperRef) {
-  const noteData = [
-    { note: 'C', freq: 'C' },  // Remove octave from freq
-    { note: 'D', freq: 'D' },
-    { note: 'E', freq: 'E' },
-    { note: 'F', freq: 'F' },
-    { note: 'G', freq: 'G' },
-    { note: 'A', freq: 'A' },
-    { note: 'B', freq: 'B' },
-  ];
+  const noteModel = new NoteModel();
+  // Show only octave 4 in the UI
+  const displayedNotes = noteModel.getOctaveNotes(4);
+  
+  // Get MIDI number for the key root (C4 by default)
+  const keyRoot = noteModel.noteToMidi('C', 4);
 
   let activeKey = null;
-  let activeNoteIndex = null;
+  let activeMidiNote = null;
   let startStep = null;
 
   const stopCurrentNote = () => {
-    if (activeNoteIndex !== null) {
-      const chordIndices = buildChordIndices(activeNoteIndex, synthEngine.chordSize);
-      chordIndices.forEach(({ index, octave }) => {
-        const baseNote = noteData[index].freq;
-        const finalNote = `${baseNote}${4 + octave}`;
-        synthEngine.noteOff(finalNote);
+    if (activeMidiNote !== null) {
+      const chordNotes = buildChord(activeMidiNote, synthEngine.chordSize, keyRoot);
+      chordNotes.forEach(midiNote => {
+        const note = noteModel.midiToNote(midiNote);
+        synthEngine.noteOff(note.freq);
       });
       if (activeKey) {
         activeKey.classList.remove('active');
@@ -34,24 +31,22 @@ export function createSynthUI(container, synthEngine, looperRef) {
     }
   };
 
-  const startNote = (keyEl, noteIndex) => {
+  const startNote = (keyEl, midiNote) => {
     // Record the end of the previous note if we're sliding
-    if (looperRef?.isLooping && activeNoteIndex !== null) {
+    if (looperRef?.isLooping && activeMidiNote !== null) {
       const endStep = looperRef.currentStep;
-      const chordIndices = buildChordIndices(activeNoteIndex, synthEngine.chordSize);
+      const chordNotes = buildChord(activeMidiNote, synthEngine.chordSize, keyRoot);
       looperRef.addNoteRecord(startStep, endStep,
         (time) => {
-          chordIndices.forEach(({ index, octave }) => {
-            const baseNote = noteData[index].freq;
-            const finalNote = `${baseNote}${4 + octave}`;
-            synthEngine.noteOn(finalNote, time);
+          chordNotes.forEach(midiNote => {
+            const note = noteModel.midiToNote(midiNote);
+            synthEngine.noteOn(note.freq, time);
           });
         },
         (time) => {
-          chordIndices.forEach(({ index, octave }) => {
-            const baseNote = noteData[index].freq;
-            const finalNote = `${baseNote}${4 + octave}`;
-            synthEngine.noteOff(finalNote, time);
+          chordNotes.forEach(midiNote => {
+            const note = noteModel.midiToNote(midiNote);
+            synthEngine.noteOff(note.freq, time);
           });
         }
       );
@@ -59,15 +54,20 @@ export function createSynthUI(container, synthEngine, looperRef) {
 
     stopCurrentNote();
     activeKey = keyEl;
-    activeNoteIndex = noteIndex;
-    const chordIndices = buildChordIndices(noteIndex, synthEngine.chordSize);
-    chordIndices.forEach(({ index, octave }) => {
-      // Get base note without octave
-      const baseNote = noteData[index].freq;
-      // Use octave 4 as the base octave and add the chord's octave offset
-      const finalNote = `${baseNote}${4 + octave}`;
-      synthEngine.noteOn(finalNote);
+    activeMidiNote = midiNote;
+    
+    const chordNotes = buildChord(midiNote, synthEngine.chordSize, keyRoot);
+    const noteNames = [];
+    
+    chordNotes.forEach(midiNote => {
+      const note = noteModel.midiToNote(midiNote);
+      if (note) { // Check if note exists (might be out of range)
+        noteNames.push(`${note.note}${note.octave}`);
+        synthEngine.noteOn(note.freq);
+      }
     });
+    
+    console.log('Playing:', noteNames.join(', '));
     keyEl.classList.add('active');
 
     // Start recording the new note
@@ -80,10 +80,13 @@ export function createSynthUI(container, synthEngine, looperRef) {
   const keysContainer = document.createElement('div');
   keysContainer.className = 'synth-keys-container';
 
-  noteData.forEach((n, i) => {
+  displayedNotes.forEach((noteInfo, i) => {
     const keyEl = document.createElement('div');
     keyEl.classList.add('synth-key');
-    keyEl.textContent = n.note;
+    if (noteInfo.note.includes('#')) {
+      keyEl.classList.add('black-key');
+    }
+    keyEl.textContent = noteInfo.note;
 
     keyEl.addEventListener('pointerdown', async e => {
       e.preventDefault();
@@ -94,7 +97,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
         await Tone.start();
       }
 
-      startNote(keyEl, i);
+      startNote(keyEl, noteInfo.midiNote);
       if (looperRef?.isLooping) {
         startStep = looperRef.currentStep;
       }
@@ -108,22 +111,20 @@ export function createSynthUI(container, synthEngine, looperRef) {
       }
 
       // Record the final note release
-      if (looperRef?.isLooping && activeNoteIndex !== null && startStep !== null) {
+      if (looperRef?.isLooping && activeMidiNote !== null && startStep !== null) {
         const endStep = looperRef.currentStep;
-        const chordIndices = buildChordIndices(activeNoteIndex, synthEngine.chordSize);
+        const chordNotes = buildChord(activeMidiNote, synthEngine.chordSize, keyRoot);
         looperRef.addNoteRecord(startStep, endStep,
           (time) => {
-            chordIndices.forEach(({ index, octave }) => {
-              const baseNote = noteData[index].freq;
-              const finalNote = `${baseNote}${4 + octave}`;
-              synthEngine.noteOn(finalNote, time);
+            chordNotes.forEach(midiNote => {
+              const note = noteModel.midiToNote(midiNote);
+              synthEngine.noteOn(note.freq, time);
             });
           },
           (time) => {
-            chordIndices.forEach(({ index, octave }) => {
-              const baseNote = noteData[index].freq;
-              const finalNote = `${baseNote}${4 + octave}`;
-              synthEngine.noteOff(finalNote, time);
+            chordNotes.forEach(midiNote => {
+              const note = noteModel.midiToNote(midiNote);
+              synthEngine.noteOff(note.freq, time);
             });
           }
         );
@@ -131,7 +132,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
 
       stopCurrentNote();
       activeKey = null;
-      activeNoteIndex = null;
+      activeMidiNote = null;
       startStep = null;
     });
 
@@ -142,7 +143,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
       }
       stopCurrentNote();
       activeKey = null;
-      activeNoteIndex = null;
+      activeMidiNote = null;
       startStep = null;
     });
 
@@ -152,7 +153,7 @@ export function createSynthUI(container, synthEngine, looperRef) {
         const targetKey = document.elementFromPoint(e.clientX, e.clientY);
         if (targetKey?.classList.contains('synth-key') && targetKey !== activeKey) {
           // Use keysContainer.children instead of container.children
-          startNote(targetKey, Array.from(keysContainer.children).indexOf(targetKey));
+          startNote(targetKey, displayedNotes[Array.from(keysContainer.children).indexOf(targetKey)].midiNote);
         }
       }
     });

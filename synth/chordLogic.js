@@ -1,33 +1,64 @@
 /**
- * chordLogic: helper functions to build chord note arrays
+ * Build chord notes based on a root note's MIDI number and position in key
  */
 
-export function buildChordIndices(rootIndex, chordSize = 1) {
-  if (chordSize <= 1) return [{index: rootIndex, octave: 0}];
+// Simplified chord qualities (just triads)
+const CHORD_QUALITIES = {
+  major: [0, 4, 7],
+  minor: [0, 3, 7],
+  diminished: [0, 3, 6]
+};
 
-  // Define intervals for more musical chord voicings
-  // Format: [halfSteps from root, scale degree]
-  const chordStructures = new Map([
-    [1, [[0, 0]]],                    // single note
-    [2, [[0, 0], [4, 2]]],           // root + third
-    [3, [[0, 0], [4, 2], [7, 4]]],   // triad
-    [4, [[0, 0], [4, 2], [7, 4], [12, 0]]],  // triad + octave
-    [5, [[-12, 0], [0, 0], [4, 2], [7, 4], [12, 0]]],  // two octaves + triad
-    [6, [[-12, 0], [-5, 5], [0, 0], [4, 2], [7, 4], [12, 0]]],  // wide voicing
-    [7, [[-12, 0], [-7, 4], [0, 0], [4, 2], [7, 4], [11, 6], [12, 0]]]  // full chord
-  ]);
+// Define chord qualities for each scale degree (triads only)
+const SCALE_DEGREE_QUALITIES = [
+  'major',     // I
+  'minor',     // ii
+  'minor',     // iii
+  'major',     // IV
+  'major',     // V
+  'minor',     // vi
+  'diminished' // vii°
+];
 
-  const intervals = chordStructures.get(chordSize) || [[0, 0]];
+// Map ALL chromatic notes to their nearest diatonic scale degree
+const CHROMATIC_TO_DIATONIC = {
+  0: 0,   // C  -> I
+  1: 0,   // C# -> I (borrowed)
+  2: 1,   // D  -> ii
+  3: 1,   // D# -> ii (borrowed)
+  4: 2,   // E  -> iii
+  5: 3,   // F  -> IV
+  6: 3,   // F# -> IV (borrowed)
+  7: 4,   // G  -> V
+  8: 4,   // G# -> V (borrowed)
+  9: 5,   // A  -> vi
+  10: 5,  // A# -> vi (borrowed)
+  11: 6   // B  -> vii°
+};
 
-  return intervals.map(([halfSteps, scaleOffset]) => {
-    // Calculate the scale index wrapping within the scale
-    let noteIndex = ((rootIndex + scaleOffset) % 7 + 7) % 7;
-    // Calculate which octave this note should be in
-    let octave = Math.floor(halfSteps / 12);
-    
-    return {
-      index: noteIndex,
-      octave: octave
-    };
-  });
+export function buildChord(rootMidi, chordSize = 1, keyRoot = 60) { // 60 = middle C
+  if (chordSize <= 1) return [rootMidi];
+
+  // Calculate semitones from key root
+  const semitones = (rootMidi - keyRoot + 120) % 12;
+  // Convert to scale degree using the map
+  const scaleDegree = CHROMATIC_TO_DIATONIC[semitones];
+  
+  // Get chord quality based on scale degree
+  const quality = SCALE_DEGREE_QUALITIES[scaleDegree];
+  const triad = CHORD_QUALITIES[quality];
+
+  // Build full chord structure using only triad notes across octaves
+  let intervals;
+  switch (chordSize) {
+    case 2: intervals = [0, triad[1]]; break;                      // root + third
+    case 3: intervals = triad; break;                              // basic triad
+    case 4: intervals = [...triad, 12]; break;                     // triad + octave
+    case 5: intervals = [-12, ...triad, 12]; break;               // triad + octaves
+    case 6: intervals = [-12, -12 + triad[1], ...triad, 12]; break; // two triads
+    case 7: intervals = [-12, -12 + triad[1], ...triad, 12, 12 + triad[1]]; break; // full range
+    default: intervals = [0];
+  }
+
+  return intervals.map(interval => rootMidi + interval);
 }
