@@ -206,6 +206,7 @@ export class SynthEngine {
     if (this.arpPattern) {
       this.arpPattern.stop();
       this.arpPattern.dispose();
+      this.arpPattern = null;
     }
 
     // Expand notes across octaves if needed
@@ -214,17 +215,19 @@ export class SynthEngine {
       arpNotes = [...arpNotes, ...notes.map(note => note + (12 * oct))];
     }
 
-    // Sequence that uses proper scheduling
+    // Simple sequence that just plays notes
     this.arpPattern = new Tone.Sequence((time, note) => {
-      const voice = this.getOrCreateVoice();
-      if (voice) {
+      if (note !== null) {
         const freq = Tone.Frequency(note, "midi").toFrequency();
-        // Use the provided time parameter for scheduling
-        voice.triggerAttackRelease(freq, "32n", time);
-        // We don't need to track active voices for arpeggiator notes
-        // as they are automatically released
+        const voice = this.getOrCreateVoice();
+        if (voice) {
+          voice.triggerAttackRelease(freq, "16n", time);
+        }
       }
-    }, arpNotes, this.arpRate).start(0);
+    }, arpNotes, this.arpRate);
+
+    // Just start immediately
+    this.arpPattern.start(0);
   }
 
   getPlaybackRate(rate) {
@@ -239,20 +242,10 @@ export class SynthEngine {
 
   setArpEnabled(enabled) {
     this.arpEnabled = enabled;
-    if (enabled) {
-      // Always ensure transport is started
-      Tone.Transport.start();
-    } else {
-      if (this.arpPattern) {
-        this.arpPattern.stop();
-      }
-      this.stopAllOscillators();
-      // Only stop transport if we started it and looper isn't active
-      if (this.transportWasStarted && !this.looperRef?.isLooping) {
-        Tone.Transport.stop();
-        Tone.Transport.position = 0;
-        this.transportWasStarted = false;
-      }
+    if (!enabled && this.arpPattern) {
+      this.arpPattern.stop();
+      this.arpPattern.dispose();
+      this.arpPattern = null;
     }
   }
 
@@ -503,11 +496,15 @@ export class SynthEngine {
 
     // Create new voice if under limit
     if (this.voicePool.size < this.maxVoices) {
-      const voice = new Tone.MonoSynth(this.voiceConfig);
+      const voice = new Tone.MonoSynth({
+        ...this.voiceConfig,
+        volume: -6 // Slightly lower volume to prevent clipping
+      });
+
       const id = `voice_${this.voicePool.size}`;
       this.voicePool.set(id, voice);
       
-      // Connect new voice to effects chain when it's created
+      // Connect voice through the effects chain
       voice.chain(
         this.tremolo,
         this.vibrato,
@@ -532,12 +529,12 @@ export class SynthEngine {
       const baseNote = Tone.Frequency(freq).toMidi();
       const chordNotes = buildChord(baseNote, this.chordSize, this.keyRoot || 60);
       
-      this.setupArpeggiator(chordNotes);
-
+      // Only start transport if it's not already running
       if (Tone.Transport.state !== 'started') {
-        this.transportWasStarted = true;
         Tone.Transport.start();
       }
+
+      this.setupArpeggiator(chordNotes);
       return;
     }
 
@@ -555,13 +552,8 @@ export class SynthEngine {
     if (this.arpEnabled) {
       if (this.arpPattern) {
         this.arpPattern.stop();
-      }
-      this.stopAllOscillators(time);
-      
-      if (this.transportWasStarted && !this.looperRef?.isLooping) {
-        Tone.Transport.stop();
-        Tone.Transport.position = 0;
-        this.transportWasStarted = false;
+        this.arpPattern.dispose();
+        this.arpPattern = null;
       }
       return;
     }

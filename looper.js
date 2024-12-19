@@ -55,6 +55,13 @@ export class Looper {
 
   start() {
     if (this.isLooping) return;
+    
+    // Always reset position when starting fresh
+    if (!this.isPaused) {
+      Tone.Transport.position = 0;
+      this.currentStep = 0;
+    }
+    
     this.isLooping = true;
     this.isPaused = false;
     this.currentMeasureStartTime = Tone.Transport.seconds;
@@ -102,6 +109,11 @@ export class Looper {
   }
 
   setRecording(state) {
+    // If starting recording from stopped state, reset transport
+    if (state && !this.isRecording && !this.isLooping) {
+      Tone.Transport.position = 0;
+      this.currentStep = 0;
+    }
     this.isRecording = state;
   }
 
