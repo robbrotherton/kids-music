@@ -115,6 +115,41 @@ export function createSynthControlsUI(synthEngine, container) {
                     ]
                 }
             }
+        },
+        arpeggiator: {
+            className: 'control-group arpeggiator-controls',
+            label: 'Arpeggiator',
+            controls: [
+                {
+                    type: 'toggle',
+                    label: 'Arp',
+                    initial: false,
+                    onChange: (value) => synthEngine.setArpEnabled(value)
+                },
+                {
+                    type: 'select',
+                    label: 'Type',
+                    options: ['up', 'down', 'upDown', 'random'],
+                    initial: 'up',
+                    onChange: (value) => synthEngine.setArpType(value)
+                },
+                {
+                    type: 'select',
+                    label: 'Rate',
+                    options: ['4n', '8n', '16n', '32n'],
+                    initial: '8n',
+                    onChange: (value) => synthEngine.setArpRate(value)
+                },
+                {
+                    type: 'range',
+                    label: 'Octaves',
+                    min: 1,
+                    max: 4,
+                    step: 1,
+                    initial: 1,
+                    onChange: (value) => synthEngine.setArpOctaves(value)
+                }
+            ]
         }
     };
 
@@ -202,7 +237,51 @@ export function createSynthControlsUI(synthEngine, container) {
             });
         }
 
+        if (structure.controls) {
+            structure.controls.forEach(control => {
+                const controlElement = createControl(control);
+                container.appendChild(controlElement);
+            });
+        }
+
         return container;
+    }
+
+    // Helper function to create control elements
+    function createControl(config) {
+        let controlElement;
+        switch (config.type) {
+            case 'toggle':
+                controlElement = document.createElement('input');
+                controlElement.type = 'checkbox';
+                controlElement.checked = config.initial;
+                controlElement.addEventListener('change', (e) => config.onChange(e.target.checked));
+                break;
+            case 'select':
+                controlElement = document.createElement('select');
+                config.options.forEach(option => {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option;
+                    optionElement.text = option;
+                    controlElement.appendChild(optionElement);
+                });
+                controlElement.value = config.initial;
+                controlElement.addEventListener('change', (e) => config.onChange(e.target.value));
+                break;
+            case 'range':
+                controlElement = document.createElement('input');
+                controlElement.type = 'range';
+                controlElement.min = config.min;
+                controlElement.max = config.max;
+                controlElement.step = config.step;
+                controlElement.value = config.initial;
+                controlElement.addEventListener('input', (e) => config.onChange(e.target.value));
+                break;
+        }
+        const label = document.createElement('label');
+        label.textContent = config.label;
+        label.appendChild(controlElement);
+        return label;
     }
 
     // Build the entire UI

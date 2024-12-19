@@ -1,3 +1,5 @@
+import { buildChord } from './chordLogic.js';
+
 export class SynthEngine {
   constructor() {
     this.voicePool = new Map(); // Replace Array with Map for voice management
@@ -107,8 +109,21 @@ export class SynthEngine {
       },
       volume: {
         level: { param: 'volume', target: 'voices', voiceParam: true }
+      },
+      arpeggiator: {
+        rate: { param: 'arpRate', target: 'arp' },
+        type: { param: 'arpType', target: 'arp' },
+        octaves: { param: 'arpOctaves', target: 'arp' }
       }
     };
+
+    this.arpPattern = null;
+    this.arpEnabled = false;
+    this.arpRate = "8n";
+    this.arpType = "up";
+    this.arpOctaves = 1;
+    this.arpeggiated = false; // Flag to prevent recursive noteOn calls
+    this.transportWasStarted = false; // Track if we started the transport
   }
 
   async initialize() {
@@ -187,6 +202,86 @@ export class SynthEngine {
     return this;
   }
 
+  setupArpeggiator(notes) {
+    if (this.arpPattern) {
+      this.arpPattern.stop();
+      this.arpPattern.dispose();
+    }
+
+    // Expand notes across octaves if needed
+    let arpNotes = [...notes];
+    for (let oct = 1; oct < this.arpOctaves; oct++) {
+      arpNotes = [...arpNotes, ...notes.map(note => note + (12 * oct))];
+    }
+
+    // Sequence that uses proper scheduling
+    this.arpPattern = new Tone.Sequence((time, note) => {
+      const voice = this.getOrCreateVoice();
+      if (voice) {
+        const freq = Tone.Frequency(note, "midi").toFrequency();
+        // Use the provided time parameter for scheduling
+        voice.triggerAttackRelease(freq, "32n", time);
+        // We don't need to track active voices for arpeggiator notes
+        // as they are automatically released
+      }
+    }, arpNotes, this.arpRate).start(0);
+  }
+
+  getPlaybackRate(rate) {
+    switch(rate) {
+      case '4n': return 0.25;
+      case '8n': return 0.5;
+      case '16n': return 1;
+      case '32n': return 2;
+      default: return 1;
+    }
+  }
+
+  setArpEnabled(enabled) {
+    this.arpEnabled = enabled;
+    if (enabled) {
+      // Always ensure transport is started
+      Tone.Transport.start();
+    } else {
+      if (this.arpPattern) {
+        this.arpPattern.stop();
+      }
+      this.stopAllOscillators();
+      // Only stop transport if we started it and looper isn't active
+      if (this.transportWasStarted && !this.looperRef?.isLooping) {
+        Tone.Transport.stop();
+        Tone.Transport.position = 0;
+        this.transportWasStarted = false;
+      }
+    }
+  }
+
+  setArpRate(rate) {
+    this.arpRate = rate;
+    if (this.arpPattern) {
+      this.arpPattern.playbackRate = this.getPlaybackRate(rate);
+    }
+  }
+
+  setArpType(type) {
+    this.arpType = type;
+    if (this.arpPattern) {
+      this.arpPattern.pattern = type;
+    }
+  }
+
+  setArpOctaves(octaves) {
+    this.arpOctaves = octaves;
+    // Re-setup pattern with new octave range if currently playing
+    if (this.arpEnabled && this.activeVoices.size > 0) {
+      const currentNotes = Array.from(this.activeVoices.values()).map(data => 
+        Tone.Frequency(data.freq).toMidi()
+      );
+      this.setupArpeggiator(currentNotes);
+      this.arpPattern.start(0);
+    }
+  }
+
   resetEffects() {
     // Reset all effects to clean state
     this.delay.wet.value = 0;
@@ -218,6 +313,17 @@ export class SynthEngine {
     this.wahFilter.disconnect();
     this.distortion.disconnect();
     this.distortionCompensation.disconnect();
+
+    if (this.arpPattern) {
+      this.arpPattern.stop();
+      this.arpPattern.dispose();
+    }
+
+    if (this.transportWasStarted) {
+      Tone.Transport.stop();
+      Tone.Transport.position = 0;
+      this.transportWasStarted = false;
+    }
   }
 
   setWaveform(wave) {
@@ -379,9 +485,9 @@ export class SynthEngine {
     this.looperRef = looperRef;
   }
 
-  stopAllOscillators() {
+  stopAllOscillators(time = Tone.now()) {
     for (const [id, voice] of this.voicePool) {
-      voice.triggerRelease();
+      voice.triggerRelease(time);
     }
     this.activeVoices.clear();
   }
@@ -421,24 +527,45 @@ export class SynthEngine {
       .sort(([, a], [, b]) => a.timestamp - b.timestamp)[0]?.[0];
   }
 
-  noteOn(freq, time = undefined) {
-    const baseNote = Tone.Frequency(freq).toMidi();
-    
-    // Try to reuse voice playing this frequency or get new one
-    let voice = Array.from(this.activeVoices.entries())
-      .find(([, data]) => data.freq === freq)?.[0] || this.getOrCreateVoice();
+  noteOn(freq, time = Tone.now()) {
+    if (this.arpEnabled && !this.arpeggiated) {
+      const baseNote = Tone.Frequency(freq).toMidi();
+      const chordNotes = buildChord(baseNote, this.chordSize, this.keyRoot || 60);
+      
+      this.setupArpeggiator(chordNotes);
 
+      if (Tone.Transport.state !== 'started') {
+        this.transportWasStarted = true;
+        Tone.Transport.start();
+      }
+      return;
+    }
+
+    const voice = this.getOrCreateVoice();
     if (voice) {
-      const actualFreq = Tone.Frequency(baseNote, "midi").toFrequency();
-      voice.triggerAttack(actualFreq, time);
+      voice.triggerAttack(freq, time);
       this.activeVoices.set(voice, { 
         freq,
-        timestamp: Date.now()
+        timestamp: Tone.now()
       });
     }
   }
 
-  noteOff(freq, time = undefined) {
+  noteOff(freq, time = Tone.now()) {
+    if (this.arpEnabled) {
+      if (this.arpPattern) {
+        this.arpPattern.stop();
+      }
+      this.stopAllOscillators(time);
+      
+      if (this.transportWasStarted && !this.looperRef?.isLooping) {
+        Tone.Transport.stop();
+        Tone.Transport.position = 0;
+        this.transportWasStarted = false;
+      }
+      return;
+    }
+
     for (const [voice, data] of this.activeVoices) {
       if (data.freq === freq) {
         voice.triggerRelease(time);
