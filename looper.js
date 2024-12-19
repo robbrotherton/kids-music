@@ -35,7 +35,10 @@ export class Looper {
     // Single unified sequencer
     this.sequence = new Tone.Sequence((time, step) => {
       this.currentStep = step;
-      this.updateStepHighlight(step);
+      // Only show step indicator if we're recording or playing
+      if (this.isLooping || this.isRecording) {
+        this.updateStepHighlight(step);
+      }
       
       // Process notes for this step
       this.noteRecords.forEach(record => {
@@ -65,7 +68,8 @@ export class Looper {
     Tone.Transport.stop();  // Changed from pause() to stop()
     Tone.Transport.position = 0;  // Reset transport position
     
-    this.updateStepHighlight(-1);  // Hide the step indicator
+    // Always clear the step indicator when stopping
+    this.updateStepHighlight(-1);
     
     if (this.synthRef) {
       this.noteRecords.forEach(record => {
@@ -92,7 +96,8 @@ export class Looper {
     this.noteRecords = [];
     this.currentStep = 0;
     Tone.Transport.position = 0;  // Reset transport position
-    this.updateStepHighlight(-1);  // Hide the step indicator
+    // Always clear the step indicator when clearing events
+    this.updateStepHighlight(-1);
   }
 
   setRecording(state) {
