@@ -15,21 +15,6 @@ export function createSynthControlsUI(synthEngine, container) {
                             type: 'waveform',
                             options: ['sine', 'square', 'sawtooth', 'triangle']
                         },
-                        performance: {
-                            className: 'performance-controls',
-                            knobs: [
-                                {
-                                    label: 'Chord Size',
-                                    min: 1, max: 7, value: 1, step: 1, integer: true,
-                                    onChange: (v) => synthEngine.setChordSize(Math.floor(v))
-                                },
-                                {
-                                    label: 'Glide',
-                                    min: 0, max: 0.5, value: 0,
-                                    effect: 'portamento', param: 'time'
-                                }
-                            ]
-                        },
                         core: {
                             className: 'core-knobs-group',
                             knobs: [
@@ -59,6 +44,21 @@ export function createSynthControlsUI(synthEngine, container) {
                             ]
                         }
                     }
+                },
+                performance: {
+                    className: 'performance-controls',
+                    knobs: [
+                        {
+                            label: 'Chord Size',
+                            min: 1, max: 7, value: 1, step: 1, integer: true,
+                            onChange: (v) => synthEngine.setChordSize(Math.floor(v))
+                        },
+                        {
+                            label: 'Glide',
+                            min: 0, max: 0.5, value: 0,
+                            effect: 'portamento', param: 'time'
+                        }
+                    ]
                 },
                 envelopes: {
                     className: 'envelopes-container',
